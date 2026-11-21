@@ -11,7 +11,7 @@ This is a personal research and paper-trading platform. It produces recommendati
 | Topic | Decision used in this plan | Source |
 |---|---|---|
 | Market | US stocks and ETFs only. Market is an abstraction (calendar, currency, sessions, costs) so TASE can be added later. | Owner answer |
-| Data budget | Undecided. Start on free sources, every provider behind a plug-in interface, upgrade per data type when the free one becomes the bottleneck. | Owner answer |
+| Data budget | Owner is willing to pay when a purchase is needed to reach the goals. Start on free sources, every provider behind a plug-in interface, and buy each paid source only at the phase where it becomes necessary (see section 5.3 for the spend timeline). | Owner answer |
 | Strategies | Generic plug-in system. Track A / Track B are tags, not hard-coded paths. Any strategy that satisfies the interface can be added. | Owner answer |
 | Owner skill | Firmware engineer, reads and changes code. Plan favors explicit, typed, testable code over frameworks with hidden magic. | Owner answer |
 | Hosting | Small always-on cloud VM (see section 8). | Owner answer |
@@ -212,6 +212,19 @@ Prices are approximate, from my knowledge as of 2026, and change often. Verify b
 | StockTwits | API largely closed to new developers | n/a | Likely not available |
 
 Recommendation: stay at $0 through phase 3 (ETF-based Track A doesn't suffer from survivorship bias as long as the ETF list is fixed in advance and includes ones that existed at the time). The first paid item should be Norgate (if single stocks) or Polygon (if Track B).
+
+### 5.3 When money is actually needed
+
+| When | Item | Approx. cost | Needed or optional | Why |
+|---|---|---|---|---|
+| Phase 3 (paper trading goes always-on) | Cloud VM + backups | ~$5–30/mo | **Needed** | The always-on deployment itself |
+| Phase 2, only if Track A moves from ETFs to single stocks | Norgate Data (survivorship-free US stocks) | ~$300–630/yr | **Needed for single stocks** | Without delisted names, single-stock backtests overstate returns; results would not be trustworthy |
+| Phase 4 | Clean point-in-time fundamentals (FMP or Sharadar) | ~$20–100/mo | Optional | Free SEC EDGAR works but takes more cleaning work |
+| Phase 5 (Track B starts) | Polygon/Massive intraday + real-time SIP | ~$30–200/mo | **Needed for Track B** | Free real-time data is IEX-only, too thin to model spreads and slippage realistically |
+| Phase 6 | LLM API for news/forum sentiment scoring | ~$5–30/mo at this volume | Optional | Only if sentiment shows predictive value in the scoreboard |
+| Phase 6+ | Options flow, X/Twitter API | ~$100–200+/mo each | Not recommended yet | Weak evidence of value relative to cost; revisit only if other signals prove out |
+
+Rule: nothing is bought ahead of the phase that uses it, and every optional purchase must first show that the free alternative is the bottleneck. I'll flag each purchase in the thread when we reach that phase.
 
 ---
 
