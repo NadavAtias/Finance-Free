@@ -16,7 +16,7 @@ This is a personal research and paper-trading platform. It produces recommendati
 | Owner skill | Firmware engineer, reads and changes code. Plan favors explicit, typed, testable code over frameworks with hidden magic. | Owner answer |
 | Hosting | Small always-on cloud VM (see section 8). | Owner answer |
 | Paper-trading duration | Open; decided by results. The plan defines minimum statistical evidence instead of a fixed time (section 6, promotion pipeline). | Owner answer |
-| Starting capital | **Guess:** $100,000 virtual, configurable. | Not answered |
+| Starting capital | $100,000 virtual, configurable. | Owner answer |
 | Account type | **Guess:** cash account (no margin), so no PDT rule but T+1 settled-cash rules apply. Margin mode is a config switch that turns on PDT and buying-power rules. | Not answered |
 | Shorting | **Guess:** long-only at first. Short support added later with borrow-availability and borrow-fee modeling. | Not answered |
 
