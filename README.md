@@ -10,6 +10,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design, the data provid
 
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
+macOS note: if `uv run ff` fails with `No module named 'ff'` (common when the project sits in a Desktop or iCloud-synced folder), macOS has hidden the editable-install `.pth` file and Python skips hidden `.pth` files. Fix it with `chflags nohidden .venv/lib/python3*/site-packages/*.pth`, or install without the editable link: `uv sync --no-editable`.
+
 ```bash
 uv sync                                   # install dependencies
 make test                                 # unit tests
