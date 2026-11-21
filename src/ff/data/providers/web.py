@@ -35,7 +35,11 @@ def _get(url: str, params: dict[str, str] | None = None, retries: int = 3) -> re
 
 
 class StooqProvider:
-    """stooq.com CSV download. No key. US tickers use the ``.us`` suffix."""
+    """stooq.com CSV download. No key. US tickers use the ``.us`` suffix.
+
+    As of 2026-11 Stooq serves a JavaScript bot check to scripts, so this
+    provider fails until that changes. Kept for when it works again.
+    """
 
     caps = ProviderCaps(
         "stooq",

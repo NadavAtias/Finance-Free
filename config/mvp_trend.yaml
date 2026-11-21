@@ -3,7 +3,7 @@ name: mvp_trend
 start: 2007-01-01        # first date with all ten ETFs plus a year of warm-up history
 end: null                # null = today
 initial_capital: 100000
-provider: stooq          # stooq | yahoo | tiingo (needs TIINGO_API_KEY) | synthetic
+provider: yahoo          # yahoo | tiingo (needs TIINGO_API_KEY) | stooq (currently bot-blocked) | synthetic
 
 # Fixed in advance (no survivorship selection): US equity, intl equity, bonds,
 # real estate, commodities, gold.

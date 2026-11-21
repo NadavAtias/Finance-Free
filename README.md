@@ -14,10 +14,10 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 uv sync                                   # install dependencies
 make test                                 # unit tests
 make demo                                 # offline run on synthetic data (checks the pipeline)
-make backtest                             # real run: downloads free daily data from Stooq
+make backtest                             # real run: downloads free daily data from Yahoo
 ```
 
-Use another free source with `uv run ff backtest config/mvp_trend.yaml --provider yahoo`. For Tiingo, copy `.env.example` to `.env` and set `TIINGO_API_KEY` (never commit `.env`).
+Stooq currently serves a JavaScript bot check, so it fails for automated use; Yahoo is the default. For Tiingo, copy `.env.example` to `.env` and set `TIINGO_API_KEY` (never commit `.env`).
 
 Each run writes a folder under `runs/` containing:
 
