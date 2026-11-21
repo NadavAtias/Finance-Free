@@ -1,4 +1,4 @@
-.PHONY: setup test lint backtest demo
+.PHONY: setup test lint backtest validate demo
 setup:
 	uv sync
 test:
@@ -7,5 +7,7 @@ lint:
 	uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy
 backtest:
 	uv run ff backtest config/mvp_trend.yaml
+validate:
+	uv run ff validate config/validate_trend.yaml
 demo:
 	uv run ff backtest config/mvp_trend.yaml --provider synthetic

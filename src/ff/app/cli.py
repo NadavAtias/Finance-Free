@@ -39,6 +39,15 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("config", type=Path)
     b.add_argument("--provider", help="override the config's data provider")
     b.add_argument("--refresh", action="store_true", help="re-download data")
+    v = sub.add_parser("validate", help="walk-forward, sweep, Deflated Sharpe, PBO, blends")
+    v.add_argument("config", type=Path)
+    v.add_argument("--provider", help="override the config's data provider")
+    v.add_argument("--refresh", action="store_true", help="re-download data")
+    v.add_argument(
+        "--open-holdout",
+        action="store_true",
+        help="include the locked hold-out period (recorded in the trial registry)",
+    )
     f = sub.add_parser("fetch", help="download and cache bars for a config's symbols")
     f.add_argument("config", type=Path)
     f.add_argument("--provider")
@@ -56,6 +65,21 @@ def main(argv: list[str] | None = None) -> int:
         for s, df in bars.items():
             print(f"{s:6s} {len(df):6d} bars  {df.index.min().date()} .. {df.index.max().date()}")
         print(f"{len(issues)} data-quality flags")
+        return 0
+    if args.cmd == "validate":
+        from ff.backtest.validation import run_validation
+
+        vout, res = run_validation(cfg, open_holdout=args.open_holdout, refresh=args.refresh)
+        copy_config(args.config, vout)
+        for c in res.checks:
+            print(f"{'PASS' if c.passed else 'FAIL'}  {c.name}: {c.detail}")
+        for sid in res.metrics:
+            m = res.metrics[sid]
+            print(
+                f"{sid:34s} CAGR {m['cagr']:6.1%}  vol {m['volatility']:5.1%}  "
+                f"Sharpe {m['sharpe']:5.2f}  maxDD {m['max_drawdown']:6.1%}"
+            )
+        print(f"Report: {vout / 'validation.html'}")
         return 0
     out = run_backtest(cfg, refresh=args.refresh)
     copy_config(args.config, out)

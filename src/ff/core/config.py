@@ -56,6 +56,13 @@ class RunConfig:
     data_dir: str = "data"
     runs_dir: str = "runs"
     settlement_days: int = 1  # US T+1 since May 2024
+    # Idle cash earns the 13-week T-bill yield (Yahoo ^IRX, in percent) unless a
+    # fixed annual rate is given. Synthetic runs use 2% when no fixed rate is set.
+    cash_rate_symbol: str | None = "^IRX"
+    cash_rate_fixed: float | None = None
+    # Validation (Phase 2): sessions on/after this date are the locked hold-out.
+    holdout_start: str | None = None
+    validation: dict[str, Any] = field(default_factory=dict)
 
     def fingerprint(self) -> str:
         blob = json.dumps(asdict(self), sort_keys=True, default=str).encode()
@@ -82,4 +89,8 @@ def load_config(path: str | Path) -> RunConfig:
         data_dir=raw.get("data_dir", "data"),
         runs_dir=raw.get("runs_dir", "runs"),
         settlement_days=int(raw.get("settlement_days", 1)),
+        cash_rate_symbol=raw.get("cash_rate_symbol", "^IRX"),
+        cash_rate_fixed=raw.get("cash_rate_fixed"),
+        holdout_start=str(raw["holdout_start"]) if raw.get("holdout_start") else None,
+        validation=dict(raw.get("validation", {})),
     )

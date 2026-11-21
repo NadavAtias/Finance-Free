@@ -15,7 +15,10 @@ uv sync                                   # install dependencies
 make test                                 # unit tests
 make demo                                 # offline run on synthetic data (checks the pipeline)
 make backtest                             # real run: downloads free daily data from Yahoo
+make validate                             # Phase 2: walk-forward, sweep, Deflated Sharpe, PBO
 ```
+
+`ff validate` keeps the last years (``holdout_start``) locked. Open them once, when you are done changing the strategy, with `uv run ff validate config/validate_trend.yaml --open-holdout`; every opening is recorded in `runs/trial_registry.jsonl`, together with every parameter set ever tried.
 
 Stooq currently serves a JavaScript bot check, so it fails for automated use; Yahoo is the default. For Tiingo, copy `.env.example` to `.env` and set `TIINGO_API_KEY` (never commit `.env`).
 
