@@ -63,6 +63,9 @@ class ValidationSettings:
     vol_matched_max_risk_per_trade: float = 0.02
     min_dsr: float = 0.95
     max_pbo: float = 0.5
+    # Other strategy kinds whose trials count against this one's Deflated Sharpe.
+    # An ensemble picked after trying its members must pay for those trials too.
+    pooled_kinds: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> ValidationSettings:
@@ -222,8 +225,9 @@ def run_validation(
     excess_df = total_df.sub(daily_rf(prep.cash_rate, total_df.index), axis=0)
 
     base_stats = sharpe_stats(_excess(base.equity.pct_change().dropna(), prep.cash_rate))
-    n_trials = max(registry.n_trials(kind), len(grid))
-    dsr, sr0 = deflated_sharpe(base_stats, registry.trial_sharpes(kind), n_trials)
+    pooled = [k for k in vs.pooled_kinds if k != kind]
+    n_trials = max(registry.n_trials(kind, pooled), len(grid))
+    dsr, sr0 = deflated_sharpe(base_stats, registry.trial_sharpes(kind, pooled), n_trials)
     pbo = pbo_cscv(excess_df, vs.pbo_blocks) if excess_df.shape[1] >= 2 else None
 
     wf, choices = walk_forward(total_df, excess_df, vs.train_years, vs.test_years)
@@ -296,6 +300,7 @@ def run_validation(
         "config_fingerprint": cfg.fingerprint(),
         "grid_size": len(grid),
         "trials_in_registry": n_trials,
+        "trials_pooled_from": ", ".join([kind, *pooled]),
         "data_warning": data_warning(prep.provider),
         "settings": json.dumps(asdict(vs)),
     }

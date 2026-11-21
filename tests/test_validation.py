@@ -122,3 +122,23 @@ def test_validation_end_to_end_on_synthetic(tmp_path: Path) -> None:
 def test_build_strategy_unknown_kind() -> None:
     with pytest.raises(KeyError):
         build_strategy("nope", "x", ["SPY"], {})
+
+
+def test_ensemble_validation_pools_member_trials(tmp_path: Path) -> None:
+    runs = tmp_path / "runs"
+    reg = TrialRegistry(runs / "trial_registry.jsonl")
+    for i in range(5):
+        reg.record_trial("trend_etf", {"x": i}, sharpe_daily=0.01 * i)
+    cfg = load_config(ROOT / "config" / "validate_track_a.yaml")
+    cfg.provider = "synthetic"
+    cfg.start, cfg.end = "2012-01-01", "2019-12-31"
+    cfg.holdout_start = "2019-01-01"
+    cfg.data_dir = str(tmp_path / "data")
+    cfg.runs_dir = str(runs)
+    cfg.validation["grid"] = {"weights": [[1, 1, 1], [2, 1, 1]]}
+    cfg.validation["train_years"] = 3
+    cfg.validation["pbo_blocks"] = 6
+    out, res = run_validation(cfg)
+    assert (out / "validation.html").exists()
+    assert res.n_trials == 5 + 2
+    assert "trend_etf" in res.meta["trials_pooled_from"]

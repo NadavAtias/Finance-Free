@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -49,16 +50,24 @@ class TrialRegistry:
             }
         )
 
-    def n_trials(self, kind: str) -> int:
-        """Distinct parameter sets ever tried for this strategy kind."""
-        return len({r["key"] for r in self._read() if r["event"] == "trial" and r["kind"] == kind})
+    def n_trials(self, kind: str, also: Iterable[str] = ()) -> int:
+        """Distinct parameter sets ever tried for this strategy kind (plus ``also`` kinds)."""
+        kinds = {kind, *also}
+        return len(
+            {
+                (r["kind"], r["key"])
+                for r in self._read()
+                if r["event"] == "trial" and r["kind"] in kinds
+            }
+        )
 
-    def trial_sharpes(self, kind: str) -> list[float]:
-        """Latest per-period Sharpe of each distinct parameter set for this kind."""
-        latest: dict[str, float] = {}
+    def trial_sharpes(self, kind: str, also: Iterable[str] = ()) -> list[float]:
+        """Latest per-period Sharpe of each distinct parameter set for these kinds."""
+        kinds = {kind, *also}
+        latest: dict[tuple[str, str], float] = {}
         for r in self._read():
-            if r["event"] == "trial" and r["kind"] == kind and r.get("sharpe_daily") is not None:
-                latest[r["key"]] = float(r["sharpe_daily"])
+            if r["event"] == "trial" and r["kind"] in kinds and r.get("sharpe_daily") is not None:
+                latest[(r["kind"], r["key"])] = float(r["sharpe_daily"])
         return list(latest.values())
 
     def holdout_openings(self, kind: str) -> list[dict[str, Any]]:

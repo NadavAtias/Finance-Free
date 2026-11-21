@@ -19,12 +19,10 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-import numpy as np
-import pandas as pd
-
 from ff.analytics.indicators import atr, realized_vol, sma, total_return
 from ff.core.types import Intent, Rationale, SignalContribution
 from ff.strategies.base import Context, Strategy, register
+from ff.strategies.common import vol_scale
 
 
 @register("trend_etf")
@@ -116,20 +114,8 @@ class TrendETF(Strategy):
                         ),
                     )
                 )
-        scale = self._vol_scale(ctx, longs)
+        scale = vol_scale(ctx, longs, self.vol_days, self.target_vol)
         return [
             replace(i, target_weight=longs[i.symbol] * scale) if i.symbol in longs else i
             for i in intents
         ]
-
-    def _vol_scale(self, ctx: Context, raw: dict[str, float]) -> float:
-        """Multiplier that brings the inverse-vol book to ``target_vol``."""
-        if not raw:
-            return 0.0
-        syms = list(raw)
-        rets = pd.DataFrame({s: ctx.data.history(s, self.vol_days + 1)["close"] for s in syms})
-        log_rets = np.diff(np.log(rets.dropna().to_numpy()), axis=0)
-        cov = np.atleast_2d(np.cov(log_rets, rowvar=False)) * 252
-        w = np.array([raw[s] for s in syms])
-        port_vol = float(np.sqrt(w @ cov @ w))
-        return self.target_vol / port_vol if port_vol > 0 else 0.0

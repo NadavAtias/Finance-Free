@@ -195,7 +195,8 @@ Sharpe is over the T-bill rate · hold-out {html.escape(v.holdout)}</div>
 <p class="warn"><b>{html.escape(verdict)}</b><br>Simulation only. Past performance does not
 predict future results. {html.escape(v.meta["data_warning"])}</p>
 <h2>Checks</h2><div class="wrap"><table>{checks}</table></div>
-<p class="muted">Deflated Sharpe uses {v.n_trials} trials from the registry; luck threshold
+<p class="muted">Deflated Sharpe uses {v.n_trials} trials from the registry
+({html.escape(str(v.meta.get("trials_pooled_from", "")))}); luck threshold
 {v.sr0_annual:.2f} annualized Sharpe. PBO: {pbo_txt}.</p>
 <h2>Strategy vs benchmarks, blend and variants</h2>
 <img alt="equity" src="data:image/png;base64,{_curves(main_series, "Growth of $1 (log scale)")}">

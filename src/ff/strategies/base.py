@@ -63,7 +63,7 @@ def register(kind: str) -> Callable[[type[Strategy]], type[Strategy]]:
 
 def build_strategy(kind: str, id: str, universe: list[str], params: dict[str, Any]) -> Strategy:
     # Import modules so their @register decorators run.
-    from ff.strategies import benchmarks, track_a  # noqa: F401
+    from ff.strategies import benchmarks, ensemble, track_a  # noqa: F401
 
     if kind not in _REGISTRY:
         raise KeyError(f"unknown strategy kind {kind!r}; registered: {sorted(_REGISTRY)}")
