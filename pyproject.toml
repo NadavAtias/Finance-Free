@@ -1,0 +1,45 @@
+[project]
+name = "finance-free"
+version = "0.1.0"
+description = "Personal research and paper-trading platform"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "pyarrow>=15",
+    "pyyaml>=6",
+    "requests>=2.31",
+    "matplotlib>=3.8",
+]
+
+[project.scripts]
+ff = "ff.app.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "hypothesis>=6.100", "ruff>=0.6", "mypy>=1.10", "pandas-stubs", "types-requests", "types-PyYAML"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ff"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+files = ["src/ff"]

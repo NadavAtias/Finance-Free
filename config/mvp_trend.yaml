@@ -1,0 +1,46 @@
+# Phase 1 MVP: time-series trend on a diversified ETF basket vs SPY and 60/40.
+name: mvp_trend
+start: 2007-01-01        # first date with all ten ETFs plus a year of warm-up history
+end: null                # null = today
+initial_capital: 100000
+provider: yahoo          # yahoo | tiingo (needs TIINGO_API_KEY) | stooq (currently bot-blocked) | synthetic
+
+# Fixed in advance (no survivorship selection): US equity, intl equity, bonds,
+# real estate, commodities, gold.
+universe: [SPY, QQQ, IWM, EFA, EEM, TLT, IEF, VNQ, DBC, GLD]
+
+strategy:
+  id: trend_etf_10
+  kind: trend_etf
+  params:
+    sma_days: 200
+    mom_days: 252
+    vol_days: 60
+    target_vol: 0.10
+    atr_days: 20
+    atr_stop_mult: 3.0
+
+benchmarks:
+  - id: spy_buy_hold
+    kind: buy_and_hold
+    params: {symbols: [SPY]}
+  - id: sixty_forty
+    kind: fixed_mix
+    params: {weights: {SPY: 0.6, IEF: 0.4}}
+
+costs:
+  commission_per_share: 0.0   # most US retail brokers
+  commission_min: 0.0
+  half_spread_bps: 1.0
+  slippage_bps: 2.0           # you trade manually at the next open
+  max_participation: 0.01
+
+risk:
+  max_risk_per_trade: 0.01
+  max_position_weight: 0.25
+  max_gross_exposure: 1.0
+  daily_loss_limit: 0.02
+  max_drawdown: 0.15
+  kill_switch_file: KILL_SWITCH
+
+settlement_days: 1
