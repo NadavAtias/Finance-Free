@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finance Free · Practice Trading</title>
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try { const t = localStorage.getItem('ff.theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="nav" id="nav" aria-label="Main navigation">
+      <div class="nav__brand">
+        <span class="nav__logo" aria-hidden="true">FF</span>
+        <div>
+          <div class="nav__title">Finance Free</div>
+          <div class="nav__sub">Practice trading</div>
+        </div>
+      </div>
+      <nav class="nav__links" id="navLinks">
+        <a href="#/overview" data-page="overview"><svg viewBox="0 0 16 16"><path d="M2 13l4-5 3 3 5-7"/></svg>Overview</a>
+        <a href="#/recommendations" data-page="recommendations"><svg viewBox="0 0 16 16"><path d="M8 2v12M2 8h12"/></svg>Trade ideas<span class="nav__count" id="navRecCount"></span></a>
+        <a href="#/positions" data-page="positions"><svg viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h12"/></svg>Holdings</a>
+        <a href="#/strategies" data-page="strategies"><svg viewBox="0 0 16 16"><path d="M3 13V8M8 13V3M13 13V6"/></svg>Strategies</a>
+        <a href="#/risk" data-page="risk"><svg viewBox="0 0 16 16"><path d="M8 2l6 11H2z M8 7v3"/></svg>Risk</a>
+        <a href="#/signals" data-page="signals"><svg viewBox="0 0 16 16"><path d="M2 8h2l2-5 4 10 2-5h2"/></svg>Signals</a>
+        <a href="#/journal" data-page="journal"><svg viewBox="0 0 16 16"><path d="M4 2h8v12H4z M6 5h4M6 8h4M6 11h2"/></svg>Activity log</a>
+        <a href="#/alerts" data-page="alerts"><svg viewBox="0 0 16 16"><path d="M4 11V7a4 4 0 018 0v4l1 1H3z M7 14h2"/></svg>Alerts<span class="nav__count" id="navAlertCount"></span></a>
+      </nav>
+      <div class="nav__foot">
+        <label class="field field--inline">
+          <span>Theme</span>
+          <select id="themeSelect">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+        <label class="field field--inline" title="See how each box looks while loading, when empty, or when something breaks">
+          <span>Preview</span>
+          <select id="demoSelect">
+            <option value="normal">Normal view</option>
+            <option value="loading">Loading</option>
+            <option value="empty">No data</option>
+            <option value="error">Something broke</option>
+          </select>
+        </label>
+        <div class="nav__note"><span class="dot dot--muted"></span><span id="apiMode">Sample data</span></div>
+      </div>
+    </aside>
+    <div class="nav-scrim" id="navScrim"></div>
+
+    <div class="main">
+      <header class="topbar" id="topbar">
+        <button class="icon-btn topbar__menu" id="menuBtn" aria-label="Open navigation">
+          <svg viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+        </button>
+        <div class="topbar__stats" id="topStats">
+          <div class="stat"><span class="stat__label">Total money</span><span class="stat__value skel">&nbsp;</span></div>
+          <div class="stat"><span class="stat__label">Today</span><span class="stat__value skel">&nbsp;</span></div>
+          <div class="stat"><span class="stat__label">Down from high</span><span class="stat__value skel">&nbsp;</span></div>
+          <div class="stat stat--market"><span class="stat__label">Market</span><span class="stat__value skel">&nbsp;</span></div>
+        </div>
+        <button class="kill" id="killBtn" role="switch" aria-checked="false" aria-describedby="killHint">
+          <span class="kill__track"><span class="kill__thumb"></span></span>
+          <span class="kill__text"><strong>KILL SWITCH</strong><small id="killHint">Trading is on</small></span>
+        </button>
+      </header>
+      <div class="halt-banner" id="haltBanner" hidden>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l6.5 12h-13z M8 6v3.5 M8 11.2v.3"/></svg>
+        <span><strong>Trading is stopped.</strong> No new trades will happen in any portfolio, and any waiting orders were cancelled. Turn the kill switch off to start again.</span>
+      </div>
+
+      <main class="content" id="content" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <div class="toast-host" id="toasts" aria-live="polite"></div>
+
+  <dialog class="dialog" id="confirmDialog">
+    <form method="dialog">
+      <h2 id="confirmTitle">Confirm</h2>
+      <p id="confirmBody"></p>
+      <div class="dialog__actions">
+        <button class="btn" value="cancel">Cancel</button>
+        <button class="btn btn--danger" value="ok" id="confirmOk">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/pages.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
