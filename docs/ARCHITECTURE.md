@@ -129,7 +129,7 @@ class Broker(Protocol):
 |---|---|---|
 | Language | Python 3.12, typed (mypy strict on core) | Ecosystem; types help a firmware-minded reader |
 | Packaging | uv, ruff, pytest, hypothesis | Fast, reproducible; property tests for risk rules |
-| Dataframes | polars (pandas where libraries need it) | Speed, explicit lazy queries |
+| Dataframes | pandas + NumPy (polars later if speed becomes a bottleneck) | Widest library support; daily data is small |
 | Bar storage | Parquet files + DuckDB | Zero-ops, fast for research, trivial backups |
 | Operational state | PostgreSQL 16 | Orders, fills, recommendations, signals, audit log |
 | TimescaleDB | Deferred | Only needed once minute data volume grows (Track B) |
@@ -347,7 +347,7 @@ Each phase ends with runnable code, tests, and a short report.
 ### Phase 3: Always-on paper trading + dashboard
 - Live daily loop: after-close ingestion, signal generation, risk, recommendations ("trade tickets": symbol, action, size, entry, stop, target, rationale, invalidation), simulated next-open fills.
 - Postgres ledger + append-only audit log of every decision, order and fill.
-- Streamlit dashboard: positions, equity curves vs SPY/QQQ, open recommendations, trade journal, risk status, kill switch.
+- Dashboard: positions, equity curves vs SPY/QQQ, open recommendations, trade journal, risk status, kill switch. **The UI design (screens, layout, Streamlit vs React) is still to be discussed with the owner before this phase starts.**
 - Telegram alerts. Deploy to the VM with backups and monitoring.
 - **Exit:** system runs unattended for 2 weeks with daily Telegram summaries.
 

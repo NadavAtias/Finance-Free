@@ -1,0 +1,13 @@
+# Phase 1: one-shot backtest container. Phase 3 adds the always-on engine,
+# Postgres and the dashboard to this file.
+services:
+  engine:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    env_file:
+      - path: ../.env
+        required: false
+    volumes:
+      - ../data:/app/data
+      - ../runs:/app/runs
