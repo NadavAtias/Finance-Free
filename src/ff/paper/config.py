@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -119,7 +120,8 @@ def load_paper_config(path: str | Path) -> PaperConfig:
     return PaperConfig(
         name=raw.get("name", "paper"),
         start=str(raw["start"]),
-        provider=raw.get("provider", "yahoo"),
+        # FF_PROVIDER in .env switches data source on a server without editing the config
+        provider=os.environ.get("FF_PROVIDER") or raw.get("provider", "yahoo"),
         portfolios=[
             PortfolioConfig(p["id"], p.get("name", p["id"]), [_sleeve(s) for s in p["sleeves"]])
             for p in raw["portfolios"]
