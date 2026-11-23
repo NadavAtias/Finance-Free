@@ -14,12 +14,15 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import pandas as pd
 
 from ff.core.types import Intent
 from ff.data.view import DataView
+
+if TYPE_CHECKING:
+    from ff.signals.base import SignalView
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,8 @@ class Context:
     weights: dict[str, float]
     is_month_end: bool
     is_first_session: bool
+    #: point-in-time market-intelligence signals (None unless the run configures them)
+    signals: SignalView | None = None
 
 
 class Strategy(ABC):
@@ -39,6 +44,8 @@ class Strategy(ABC):
     warmup: int = 0
     #: benchmarks bypass per-trade risk caps (they are reference portfolios)
     is_benchmark: ClassVar[bool] = False
+    #: strategies that read ``ctx.signals`` (the runner then builds the signal store)
+    needs_signals: ClassVar[bool] = False
 
     def __init__(self, id: str, universe: list[str], **params: Any) -> None:
         self.id = id
@@ -61,10 +68,14 @@ def register(kind: str) -> Callable[[type[Strategy]], type[Strategy]]:
     return deco
 
 
-def build_strategy(kind: str, id: str, universe: list[str], params: dict[str, Any]) -> Strategy:
+def strategy_class(kind: str) -> type[Strategy] | None:
     # Import modules so their @register decorators run.
-    from ff.strategies import benchmarks, ensemble, track_a  # noqa: F401
+    from ff.strategies import benchmarks, conviction, ensemble, track_a  # noqa: F401
 
-    if kind not in _REGISTRY:
+    return _REGISTRY.get(kind)
+
+
+def build_strategy(kind: str, id: str, universe: list[str], params: dict[str, Any]) -> Strategy:
+    if strategy_class(kind) is None:
         raise KeyError(f"unknown strategy kind {kind!r}; registered: {sorted(_REGISTRY)}")
     return _REGISTRY[kind](id=id, universe=universe, **params)

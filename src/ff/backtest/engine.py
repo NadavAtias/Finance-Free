@@ -27,6 +27,7 @@ from ff.execution.broker import SimBroker
 from ff.execution.portfolio import ClosedTrade, Portfolio
 from ff.markets.us import USMarket
 from ff.risk.engine import RiskEngine, RiskState
+from ff.signals.base import SignalStore
 from ff.strategies.base import Context, Strategy
 
 
@@ -73,6 +74,7 @@ class BacktestEngine:
         reference_symbol: str = "SPY",
         min_trade_weight: float = 0.005,
         cash_rate: pd.Series | None = None,
+        signals: SignalStore | None = None,
     ) -> None:
         """``cash_rate``: annualized yield on idle cash (decimal), indexed by date.
 
@@ -92,6 +94,7 @@ class BacktestEngine:
         self.cash_rate = cash_rate.sort_index() if cash_rate is not None else None
         self.interest_earned = 0.0
         self._was_halted = False
+        self.signals = signals
 
     def _accrue_interest(self, prev: pd.Timestamp, today: pd.Timestamp) -> None:
         if self.cash_rate is None or self.portfolio.cash <= 0:
@@ -146,6 +149,7 @@ class BacktestEngine:
             weights=weights,
             is_month_end=is_month_end,
             is_first_session=is_first_session,
+            signals=self.signals.view(d) if self.signals is not None else None,
         )
         intents = self.strategy.on_bar(ctx)
 

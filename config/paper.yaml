@@ -34,11 +34,32 @@ portfolios:
           kind: fixed_mix
           params: {weights: {SPY: 0.6, IEF: 0.4}}
 
+  # Phase 4: the system's own stock picks from every signal source, measured as its
+  # own book. Rules and defaults: src/ff/strategies/conviction.py. Source weights
+  # are learned from each source's scored record (src/ff/signals/scoring.py).
+  - id: conviction
+    name: System Conviction
+    sleeves:
+      - id: conviction_picks
+        capital: 100000
+        universe_file: config/universes/us_large_cap.yaml
+        strategy:
+          kind: system_conviction
+          params: {max_positions: 10, entry_score: 0.30, exit_score: 0.0, atr_stop_mult: 2.5,
+                   reward_risk: 2.0, max_hold: 63, max_per_sector: 3, cooldown: 21}
+
+# Phase 4 market-intelligence sources. All free. Insider and earnings data come from
+# SEC EDGAR, which needs SEC_USER_AGENT in .env ("Your Name you@example.com").
+# Each source is scored on its record since history_start; the first run downloads
+# that history (about 20 minutes, then cached under data/signals/).
+signals:
+  sources: [price_momentum, insider_buying, earnings_reaction, macro_regime]
+  history_start: 2008-01-01
+
 # Shown on the dashboard so its layout stays complete; they hold no money until
 # their phase starts.
 placeholders:
   - {id: track_b, name: "Track B · intraday (Phase 5)"}
-  - {id: conviction, name: "System Conviction (Phase 4)"}
 
 # Research strategies listed on the leaderboard with their validation results.
 research:

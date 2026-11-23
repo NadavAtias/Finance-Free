@@ -20,7 +20,8 @@ FF.pages = (function () {
     orb_5m: 'Morning breakout', vwap_reversion: 'Bounce back', pead: 'After-earnings drift', gap_fade: 'Gap fade',
     // live backend ids
     track_a_systematic: 'Trend + risk parity', core_60_40: '60/40 core', trend_etf: 'Trend following',
-    risk_parity: 'Risk parity', xs_momentum: 'Momentum rotation',
+    risk_parity: 'Risk parity', xs_momentum: 'Momentum rotation', conviction_picks: 'Conviction picks',
+    system_conviction: 'Conviction picks',
   };
   const pname = (id) => PORTFOLIO_NAME[id] || id;
   const sname = (id) => STRATEGY_NAME[id] || id;
@@ -570,45 +571,143 @@ FF.pages = (function () {
   }
 
   // ======================= 6. SIGNALS =======================
+  // Each source keeps one color wherever it appears: bar segments, legend, table.
+  const SRC_COLOR = { insider_buying: 'var(--src-insider)', price_momentum: 'var(--src-momentum)', earnings_reaction: 'var(--src-earnings)', macro_regime: 'var(--src-macro)' };
+  const srcColor = (id) => SRC_COLOR[id] || 'var(--text-3)';
+
+  // The board: every stock the system is weighing, as a lane split into what each
+  // source adds. The dashed line is where it starts buying.
+  function board(el, d) {
+    const stocks = (d.stocks || []).slice().sort((a, b) => b.score - a.score);
+    if (!stocks.length) {
+      el.innerHTML = `<div class="board__head"><div><h2>What the system would buy</h2><p>No source has earned any trust yet, so the system makes no picks. This fills in as the scored history grows.</p></div></div>`;
+      return;
+    }
+    const span = Math.max(0.6, d.entry_score * 1.6, ...stocks.map((s) => Math.max(
+      s.parts.filter((p) => p.contrib > 0).reduce((a, p) => a + p.contrib, 0),
+      -s.parts.filter((p) => p.contrib < 0).reduce((a, p) => a + p.contrib, 0))));
+    const lo = -span * 0.55, hi = span;
+    const at = (v) => ((v - lo) / (hi - lo)) * 100;
+    const z = at(0), bar = at(d.entry_score);
+    const over = stocks.filter((s) => s.score >= d.entry_score);
+    const w = Object.entries(d.weights || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+    const lead = w.length ? `It listens most to ${d.names[w[0][0]].toLowerCase()} (${fmt.pct(w[0][1], 0)} of every score).` : '';
+    const verdict = `${over.length ? `${over.length} stock${over.length > 1 ? 's clear' : ' clears'} the bar of ${fmt.num(d.entry_score)}.` : `Nothing clears the bar of ${fmt.num(d.entry_score)} today.`} ${lead}`;
+    const seg = (s) => {
+      let pos = 0, neg = 0;
+      return s.parts.map((p) => {
+        const left = p.contrib >= 0 ? at(pos) : at(neg + p.contrib);
+        const width = Math.abs(at(p.contrib) - at(0));
+        if (p.contrib >= 0) pos += p.contrib; else neg += p.contrib;
+        return `<i class="board__seg" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;--c:${srcColor(p.source)}" data-tip="${esc(`${d.names[p.source] || p.source} ${p.contrib >= 0 ? 'adds' : 'takes away'} ${fmt.num(Math.abs(p.contrib))}: ${p.detail}`)}"></i>`;
+      }).join('');
+    };
+    el.innerHTML = `<div class="board__head"><div><h2>What the system would buy</h2><p>Its own score for each stock at the close of ${esc(fmt.date(d.as_of))}. Each colored piece is what one source adds. Point at a piece to see why.</p></div><p class="board__verdict">${esc(verdict)}</p></div>
+      <div class="board__lanes" style="--bar-frac:${(bar / 100).toFixed(4)};--z:${z.toFixed(2)}%">
+        <div class="board__line" aria-hidden="true"><span>buys from ${esc(fmt.num(d.entry_score))}</span></div>
+        ${stocks.map((s, i) => `<div class="board__lane ${s.score >= d.entry_score ? 'is-over' : ''}" style="--i:${i}">
+          <div class="board__name"><b>${esc(s.ticker)}</b><span>${esc(s.name)}</span></div>
+          <div class="board__track" role="img" aria-label="${esc(`${s.ticker} score ${fmt.num(s.score)}`)}"><span class="board__zero"></span>${seg(s)}</div>
+          <div class="board__v ${tone(s.score)}">${esc(fmt.num(s.score))}${s.held ? '<em>held</em>' : ''}</div></div>`).join('')}
+      </div>
+      <div class="board__legend">${Object.keys(d.weights || {}).map((k) => `<span style="--c:${srcColor(k)}"><i></i>${esc(d.names[k] || k)} <b>${esc(fmt.pct(d.weights[k], 0))}</b></span>`).join('')}
+        ${d.trust < 1 ? `<span class="board__note">Evidence is still thin, so every score is scaled to ${esc(fmt.pct(d.trust, 0))}.</span>` : ''}</div>`;
+    $$('.board__seg', el).forEach((n) => {
+      const show = (e) => FF.ui.tip.show(esc(n.dataset.tip), e.clientX, e.clientY);
+      n.addEventListener('mouseenter', show);
+      n.addEventListener('mousemove', show);
+      n.addEventListener('mouseleave', () => FF.ui.tip.hide());
+    });
+  }
+
+  // Market mood from -1 (risk-off) to +1 (risk-on), and what it does to new positions.
+  function mood(body, d) {
+    const x = ((Math.max(-1, Math.min(1, d.regime)) + 1) / 2) * 100;
+    const word = d.regime > 0.15 ? 'Calm' : d.regime < -0.15 ? 'Nervous' : 'Mixed';
+    body.innerHTML = `<div class="mood">
+      <div class="mood__v ${tone(d.regime)}">${esc(word)} <span>${esc(fmt.num(d.regime))}</span></div>
+      <div class="mood__track"><i style="left:${x.toFixed(1)}%"></i></div>
+      <div class="mood__ends"><span>Nervous</span><span>Calm</span></div>
+      <p>${esc(d.regime_text || 'No economic data yet.')}</p>
+      <p class="mood__effect">New picks are bought at <b>${esc(fmt.pct(d.scale, 0))}</b> of full size.${d.scale >= 1 ? ' The economy only shrinks positions when it turns nervous, and only as much as its own record has earned.' : ''}</p></div>`;
+  }
+
   function signals(root) {
-    head(root, 'Signals', 'Where trade ideas come from, how often each source has been right, and how much the system listens to it. Sources that stop working get listened to less.');
+    head(root, 'Signals', 'Where trade ideas come from, how often each source has been right, and how much the system listens to it. A source starts at zero and earns trust only with a scored record.');
+    const getBoard = shared('/api/conviction');
+    const boardEl = block(root, 'board');
+    getBoard().then((d) => (d && d.stocks ? board(boardEl, d) : boardEl.remove())).catch(() => boardEl.remove());
+
+    const row = block(root, 'grid grid--2');
+    row.style.marginTop = '14px';
+    const moodEl = document.createElement('section');
+    const calEl = document.createElement('section');
+    row.append(moodEl, calEl);
+    panel(moodEl, {
+      title: 'Market mood',
+      sub: 'Fear index, yield curve and credit spreads',
+      load: getBoard,
+      isEmpty: (d) => !d || d.regime == null,
+      empty: { title: 'No economic data yet' },
+      render: mood,
+    });
+    panel(calEl, {
+      title: 'Coming up',
+      sub: 'Scheduled news that can move the whole market',
+      flush: true,
+      load: getBoard,
+      isEmpty: (d) => !d || !(d.calendar || []).length,
+      empty: { title: 'Nothing scheduled in the next 6 weeks', text: 'CPI and jobs report dates appear when FRED_API_KEY is set.' },
+      render(body, d) {
+        body.innerHTML = `<ul class="cal">${d.calendar.map((e) => `<li><time>${esc(fmt.date(e.date))}</time><span>${esc(e.event)}</span></li>`).join('')}</ul>`;
+      },
+    });
+
     const tbl = block(root);
+    tbl.style.marginTop = '14px';
     const ev = block(root);
     ev.style.marginTop = '14px';
+    const hzBars = (s) => ['5', '21', '63'].map((h, i) => {
+      const t = s.by_horizon && s.by_horizon[h] ? s.by_horizon[h].t : null;
+      const hgt = t == null ? 2 : Math.max(2, Math.min(22, Math.abs(t) * 8));
+      return `<i class="${t != null && t < 0 ? 'neg' : ''} ${String(s.horizon) === h ? 'is-main' : ''}" style="height:${hgt}px" title="${['1 week', '1 month', '3 months'][i]}: strength ${t == null ? 'unknown' : fmt.num(t, 1)}"></i>`;
+    }).join('');
     panel(tbl, {
       title: 'Sources',
-      sub: '"Right" means the stock moved the way the source said within 5 days',
+      sub: '"Right" means the stock beat the other stocks (or the market moved the way the source said) over the source\'s holding time',
       flush: true,
       load: () => api.get('/api/signals'),
       isEmpty: (d) => !d.length,
-      empty: { title: 'No sources set up yet' },
+      empty: { title: 'No sources set up yet', text: 'Add a signals block to config/paper.yaml and run ff paper.' },
       render(body, d) {
-        const maxW = Math.max(...d.map((s) => s.trust));
+        const maxW = Math.max(0.0001, ...d.map((s) => s.trust || 0));
         body.innerHTML = `<div class="table-wrap"><table class="t"><thead><tr>
-          <th>Source</th><th>Used for</th><th>Status</th><th class="num">Right, 90 days</th><th class="num">Right, all time</th><th class="num">Calls made</th><th class="num" title="Information coefficient: how well the signal lines up with what happened next. Above 0 helps, below 0 hurts.">Strength</th><th>How much we listen</th><th>Last 12 weeks</th></tr></thead>
+          <th>Source</th><th>Used for</th><th>Status</th><th class="num">Right, all time</th><th class="num">Right, 90 days</th><th class="num">Calls</th><th class="num" title="t-statistic: how sure we can be the source is not just luck. Above 2 is convincing, under 1 is noise.">Strength</th><th title="Strength after 1 week, 1 month and 3 months. The dark bar is the holding time it is judged on.">Over time</th><th>How much we listen</th><th>Last 12 months</th><th>Data</th></tr></thead>
           <tbody>${d.map((s) => `<tr>
-            <td><div style="font-weight:600">${esc(s.name)}</div><div class="tname">${esc(s.note)}</div></td>
+            <td><div style="font-weight:600"><span class="src-dot" style="--c:${srcColor(s.id)}"></span>${esc(s.name)}</div><div class="tname" title="${esc(s.evidence || '')}">${esc(s.note)}</div></td>
             <td class="sec">${esc(s.role)}</td>
             <td>${badge(s.status)}</td>
-            <td class="num">${s.hit_90d == null ? '—' : `<b class="${s.hit_90d < 0.5 ? 'down' : ''}">${esc(fmt.pct(s.hit_90d, 0))}</b>`}</td>
-            <td class="num">${esc(s.hit_all == null ? '—' : fmt.pct(s.hit_all, 0))}</td>
+            <td class="num">${s.hit_all == null ? '—' : `<b class="${s.hit_all < 0.5 ? 'down' : ''}">${esc(fmt.pct(s.hit_all, 0))}</b>`}</td>
+            <td class="num">${esc(s.hit_90d == null ? '—' : fmt.pct(s.hit_90d, 0))}</td>
             <td class="num">${esc(fmt.int(s.n))}</td>
-            <td class="num ${s.ic < 0 ? 'down' : ''}">${s.ic == null ? '—' : esc(fmt.num(s.ic, 3))}</td>
-            <td class="mono">${esc(fmt.pct(s.trust, 0))}<span class="minibar"><i style="width:${maxW ? (s.trust / maxW) * 100 : 0}%"></i></span></td>
-            <td>${charts.sparkline(s.history, { ref: 0.5, color: 'var(--s1)' })}</td></tr>`).join('')}</tbody></table></div>
-          <div class="panel__foot">In the last column, the dashed line is 50%, the same as a coin flip. Reddit is only used to warn about hype, because heavy chatter usually comes before a drop.</div>`;
+            <td class="num ${s.t != null && s.t < 0 ? 'down' : ''}">${s.t == null ? '—' : esc(fmt.num(s.t, 1))}</td>
+            <td><span class="hz">${hzBars(s)}</span></td>
+            <td class="mono">${esc(fmt.pct(s.trust || 0, 0))}<span class="minibar"><i style="width:${((s.trust || 0) / maxW) * 100}%;background:${srcColor(s.id)}"></i></span></td>
+            <td>${s.history && s.history.length ? charts.sparkline(s.history, { ref: 0.5, color: srcColor(s.id) }) : '—'}</td>
+            <td class="sec">${s.data && !s.data.ok ? `<span class="down" title="${esc(s.data.problem)}">Problem</span>` : esc(s.data && s.data.updated ? fmt.date(s.data.updated) : '—')}</td></tr>`).join('')}</tbody></table></div>
+          <div class="panel__foot">The dashed line in the last chart is 50%, a coin flip. "How much we listen" for stock pickers is their share of every score; for the economy it is how far its record lets it shrink new positions. Hover a source's description for the research behind it.</div>`;
       },
     });
     panel(ev, {
       title: 'Latest signals',
-      sub: 'What the sources said before the last run',
+      sub: 'What the sources reported over the last two weeks',
       flush: true,
       load: () => api.get('/api/signals/events'),
       isEmpty: (d) => !d.length,
-      empty: { title: 'No new signals in the last 2 days' },
+      empty: { title: 'No new signals in the last 2 weeks' },
       render(body, d) {
-        body.innerHTML = `<div class="table-wrap"><table class="t"><thead><tr><th>Time (NY)</th><th>Source</th><th>Stock</th><th>What happened</th><th class="num" title="Positive leans buy, negative leans sell">Score</th></tr></thead>
-          <tbody>${d.map((e) => `<tr><td class="mono">${esc(fmt.ts(e.ts))}</td><td>${esc(e.source)}</td><td class="ticker">${esc(e.ticker)}</td><td class="wrap">${esc(e.text)}</td><td class="num ${tone(e.score)}">${esc(fmt.num(e.score))}</td></tr>`).join('')}</tbody></table></div>`;
+        body.innerHTML = `<div class="table-wrap"><table class="t"><thead><tr><th>Known at</th><th>Source</th><th>Stock</th><th>What happened</th><th class="num" title="Positive leans buy, negative leans sell">Score</th></tr></thead>
+          <tbody>${d.map((e) => `<tr><td class="mono">${esc(fmt.ts(e.ts))}</td><td><span class="src-dot" style="--c:${srcColor(e.source_id)}"></span>${esc(e.source)}</td><td class="ticker">${esc(e.ticker)}</td><td class="wrap">${esc(e.text)}</td><td class="num ${tone(e.score)}">${esc(fmt.num(e.score))}</td></tr>`).join('')}</tbody></table></div>`;
       },
     });
   }

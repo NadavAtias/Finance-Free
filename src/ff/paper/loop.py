@@ -109,21 +109,31 @@ def _new_engine(cfg: PaperConfig, sl: SleeveConfig, prep: Prepared) -> BacktestE
         risk = RiskEngine(replace(cfg.risk, kill_switch_file=ks), audit, reset_after_sessions=None)
     market = USMarket(CostModel(cfg.costs), cfg.settlement_days)
     return BacktestEngine(
-        strat, prep.data, market, risk, sl.capital, audit, cash_rate=prep.cash_rate
+        strat,
+        prep.data,
+        market,
+        risk,
+        sl.capital,
+        audit,
+        cash_rate=prep.cash_rate,
+        signals=prep.signals if strat.needs_signals else None,
     )
 
 
 def _detach(engine: BacktestEngine) -> bytes:
     data, cash_rate = engine.data, engine.cash_rate
     records = engine.audit.records
+    signals = getattr(engine, "signals", None)
     engine.data = engine.broker.data = None  # type: ignore[assignment]
     engine.cash_rate = None
+    engine.signals = None
     engine.audit.records = []
     try:
         return pickle.dumps(engine, protocol=pickle.HIGHEST_PROTOCOL)
     finally:
         engine.data = engine.broker.data = data
         engine.cash_rate = cash_rate
+        engine.signals = signals
         engine.audit.records = records
 
 
@@ -131,6 +141,7 @@ def _attach(blob: bytes, prep: Prepared, cfg: PaperConfig) -> BacktestEngine:
     engine: BacktestEngine = pickle.loads(blob)
     engine.data = engine.broker.data = prep.data
     engine.cash_rate = prep.cash_rate.sort_index()
+    engine.signals = prep.signals if engine.strategy.needs_signals else None
     engine.risk.cfg = replace(engine.risk.cfg, kill_switch_file=str(cfg.kill_switch_path))
     return engine
 
@@ -302,7 +313,11 @@ def _tickets(
             "stop": round(it.stop_price, 2) if (buy and it and it.stop_price) else None,
             "take_profit": it.take_profit if it else None,
             "confidence": round((it.confidence if it else 0.5) * 100),
-            "horizon": "Hold for weeks to months; reviewed each month end"
+            "horizon": (
+                "Up to 3 months; sold early if the score fades or the take-profit is hit"
+                if sl.strategy.kind == "system_conviction"
+                else "Hold for weeks to months; reviewed each month end"
+            )
             if buy
             else "Sell at the next open",
             "signals": sig or (o.reason or ""),
@@ -512,6 +527,10 @@ def run_paper(
         return result
 
     held = sorted({r["ticker"] for r in db.rows("SELECT ticker FROM positions")})
+    if prep.signals is not None:
+        from ff.paper.signals import save_signal_snapshots
+
+        save_signal_snapshots(db, cfg, prep, last_done)
     db.set_json("benchmarks", _benchmark_growth(cfg, prep, last_done))
     db.set_json("correlation", _correlation(prep, held, last_done))
     db.set_json(

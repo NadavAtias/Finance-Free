@@ -58,6 +58,11 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("--no-refresh", action="store_true", help="use cached data only")
     pp.add_argument("--no-notify", action="store_true", help="don't send Telegram")
     pp.add_argument("--reset-breaker", metavar="SLEEVE", help="reset a tripped drawdown breaker")
+    sg = sub.add_parser(
+        "signals", help="download every signal source and print how much each one has earned"
+    )
+    sg.add_argument("config", type=Path)
+    sg.add_argument("--no-refresh", action="store_true", help="use cached data only")
     dm = sub.add_parser("daemon", help="run the paper loop after every US close, forever")
     dm.add_argument("config", type=Path)
     sv = sub.add_parser("serve", help="serve the dashboard and its API")
@@ -67,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     sv.add_argument("--dashboard", type=Path, default=Path("dashboard"))
     args = p.parse_args(argv)
 
-    if args.cmd in ("paper", "daemon", "serve"):
+    if args.cmd in ("paper", "daemon", "serve", "signals"):
         return _paper_commands(args)
 
     cfg = load_config(args.config)
@@ -121,6 +126,8 @@ def _paper_commands(args: argparse.Namespace) -> int:
 
         uvicorn.run(create_app(pcfg, args.dashboard), host=args.host, port=args.port)
         return 0
+    if args.cmd == "signals":
+        return _signals_report(pcfg, refresh=not args.no_refresh)
     if args.cmd == "daemon":
         from ff.paper.daemon import serve_forever
 
@@ -137,6 +144,44 @@ def _paper_commands(args: argparse.Namespace) -> int:
         print(res.summary)
     if res.telegram:
         print(f"Telegram: {res.telegram}")
+    return 0
+
+
+def _signals_report(pcfg: object, refresh: bool) -> int:
+    from ff.backtest.runner import prepare
+    from ff.paper.config import PaperConfig
+    from ff.paper.signals import conviction_board, scoreboard
+
+    assert isinstance(pcfg, PaperConfig)
+    if not pcfg.signals:
+        print("No signals block in this config.")
+        return 1
+    prep = prepare(pcfg.as_run_config(), refresh=refresh)
+    assert prep.signals is not None
+    last = prep.signals.sessions[-1]
+    print(f"Signal sources as of {last.date()} (outcomes known by then only)\n")
+    print(
+        f"{'source':20s} {'status':13s} {'months':>6s} {'calls':>7s} {'right':>6s} "
+        f"{'t':>5s} {'listen':>7s}  data"
+    )
+    for s in scoreboard(prep, last):
+        hit = f"{s['hit_all']:.0%}" if s["hit_all"] is not None else "-"
+        t = f"{s['t']:.1f}" if s["t"] is not None else "-"
+        d = s["data"]
+        data = "ok" if d["ok"] else f"PROBLEM: {d['problem']}"
+        print(
+            f"{s['name']:20s} {s['status']:13s} {s['months']:6d} {s['n']:7d} {hit:>6s} "
+            f"{t:>5s} {s['trust']:7.0%}  {data} ({d['records']} records)"
+        )
+    board = conviction_board(pcfg, prep, last, set())
+    if board:
+        print(f"\nMarket mood {board['regime']:+.2f}: {board['regime_text'] or 'no data'}")
+        print(f"Top System Conviction scores (buys from {board['entry_score']:+.2f}):")
+        for st in board["stocks"][:10]:
+            print(
+                f"  {st['ticker']:6s} {st['score']:+.2f}  "
+                + "; ".join(f"{p['source']} {p['contrib']:+.2f}" for p in st["parts"])
+            )
     return 0
 
 
