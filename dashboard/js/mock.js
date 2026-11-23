@@ -411,6 +411,7 @@
     'GET /api/signals': () => SIGNALS,
     'GET /api/signals/events': () => SIGNAL_EVENTS,
     'GET /api/journal': () => JOURNAL,
+    'GET /api/trades': () => [],
     'GET /api/alerts': () => ALERTS,
     'POST /api/alerts/:id/read': (id) => { const a = ALERTS.find((x) => x.id === id); if (a) a.read = true; return { ok: true }; },
     'GET /api/alerts/settings': () => JSON.parse(JSON.stringify(ALERT_SETTINGS)),

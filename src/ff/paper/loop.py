@@ -201,7 +201,8 @@ def _journal(db: PaperDB, recs: list[dict[str, Any]], sleeve: str, run: SleeveRu
             db.event(
                 ts_et(d, 16, 5),
                 "decision",
-                f"Target {w:.1%} of sleeve. {r.get('rationale', '')}",
+                f"Holds {w:.1%} of this strategy's money after risk limits. "
+                f"{r.get('rationale', '')}",
                 sym,
                 sleeve,
             )

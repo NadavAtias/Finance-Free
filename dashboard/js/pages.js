@@ -306,9 +306,33 @@ FF.pages = (function () {
   function positions(root) {
     head(root, 'Holdings', 'What you own right now, priced at the last close. "At risk" is what you\'d lose if every stop-loss is hit.');
     const summary = block(root, 'grid grid--4');
+    const comp = block(root, 'grid grid--2');
+    comp.style.marginTop = '14px';
     const tbl = block(root);
     tbl.style.marginTop = '14px';
     const req = shared('/api/positions');
+
+    // What each strategy's money is in right now (only the live backend sends `sleeves`).
+    req().then((d) => {
+      (d.sleeves || []).forEach((sl) => panel(block(comp), {
+        title: `${sl.name} · ${pname(sl.portfolio)}`,
+        sub: sl.rules,
+        load: req,
+        isEmpty: () => false,
+        render(body) {
+          const note = sl.holdings.length
+            ? `Share of this strategy's money in each holding. ${esc(fmt.pct(sl.invested_pct, 0))} invested; the rest waits in cash earning the T-bill rate.`
+            : 'Everything is in cash right now: no holding passes this strategy\'s rules.';
+          body.innerHTML = `<div class="kpi-grid" style="margin-bottom:12px">
+              <div><div class="kpi__l">Started with</div><div class="mono">${esc(fmt.usd(sl.start_capital))}</div></div>
+              <div><div class="kpi__l">Worth now</div><div class="mono">${esc(fmt.usd(sl.equity))} <span class="${tone(sl.return_pct)}">${esc(fmt.pctSigned(sl.return_pct))}</span></div></div>
+              <div><div class="kpi__l">Cash</div><div class="mono">${esc(fmt.usd(sl.cash))} <span class="muted">${esc(fmt.pct(1 - sl.invested_pct, 0))}</span></div></div>
+            </div><div class="sl-bars"></div>
+            <p class="hint" style="margin-top:10px">${note}</p>`;
+          if (sl.holdings.length) charts.bars($('.sl-bars', body), sl.holdings, { scaleMax: Math.max(0.3, ...sl.holdings.map((h) => h.pct)) * 1.1 });
+        },
+      }));
+    }).catch(() => {});
 
     panel(summary, {
       load: req,
@@ -333,7 +357,7 @@ FF.pages = (function () {
     let sort = { key: 'market_value', dir: -1 };
     panel(tbl, {
       title: 'Holdings',
-      sub: 'Tap a column name to sort',
+      sub: 'Tap a column name to sort. Tap a holding to see why it was bought and its trades.',
       flush: true,
       load: req,
       isEmpty: (d) => !d.positions.length,
@@ -348,7 +372,7 @@ FF.pages = (function () {
           const rows = [...d.positions].sort((a, b) => (a[sort.key] > b[sort.key] ? 1 : a[sort.key] < b[sort.key] ? -1 : 0) * sort.dir);
           const tot = (k) => d.positions.reduce((a, x) => a + x[k], 0);
           body.innerHTML = `<div class="table-wrap"><table class="t"><thead><tr>${cols.map(([k, l, n]) => `<th class="sortable ${n ? 'num' : ''}" data-k="${k}" ${sort.key === k ? `aria-sort="${sort.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${esc(l)}</th>`).join('')}</tr></thead>
-            <tbody>${rows.map((p) => `<tr>
+            <tbody>${rows.map((p, i) => `<tr data-i="${i}" style="${p.why !== undefined ? 'cursor:pointer' : ''}">
               <td><div class="ticker">${esc(p.ticker)}</div><div class="tname">${esc(p.name)}</div></td>
               <td>${esc(pname(p.portfolio))}</td><td>${esc(sname(p.strategy))}</td>
               <td class="num">${esc(p.shares)}</td><td class="num">${esc(fmt.price(p.entry))}</td><td class="num">${esc(fmt.price(p.last))}</td>
@@ -360,7 +384,7 @@ FF.pages = (function () {
               <td class="num">${riskCell(p.risk_pct_equity)}</td>
               <td class="num">${esc(fmt.price(p.stop))}</td>
               <td class="num">${stopCell(p.stop_distance_pct)}</td>
-              <td class="num">${esc(p.days_held)}</td></tr>`).join('')}</tbody>
+              <td class="num">${esc(p.days_held)}</td></tr>${open.has(keyOf(p)) ? detailRow(p, cols.length) : ''}`).join('')}</tbody>
             <tfoot><tr><td colspan="6">Total · ${d.positions.length} holdings</td>
               <td class="num">${esc(fmt.usd(tot('market_value')))}</td>
               <td class="num ${tone(tot('day_pnl'))}">${esc(fmt.usdSigned(tot('day_pnl')))}</td>
@@ -372,10 +396,27 @@ FF.pages = (function () {
             sort = { key: th.dataset.k, dir: sort.key === th.dataset.k ? -sort.dir : -1 };
             draw();
           }));
+          $$('tbody tr[data-i]', body).forEach((tr) => tr.addEventListener('click', () => {
+            const p = rows[+tr.dataset.i];
+            if (p.why === undefined) return;
+            if (open.has(keyOf(p))) open.delete(keyOf(p)); else open.add(keyOf(p));
+            draw();
+          }));
         };
+        const open = new Set();
         draw();
       },
     });
+  }
+  const keyOf = (p) => `${p.ticker}/${p.strategy}`;
+  function detailRow(p, span) {
+    const hist = (p.history || []).map((h) => `<li><span class="mono muted">${esc(fmt.date(h.ts))}</span> ${esc(h.detail)}</li>`).join('');
+    return `<tr class="detail"><td colspan="${span}" style="white-space:normal;background:var(--surface-2)">
+      <div class="grid grid--2" style="gap:18px;padding:6px 2px">
+        <div><div class="kpi__l">Why it's held (${esc(sname(p.strategy))})</div><div style="margin-top:4px;max-width:70ch">${esc(p.why || 'No decision recorded yet.')}</div>
+          <p class="hint" style="margin-top:8px">Bought ${esc(p.opened ? fmt.date(p.opened) : '—')} · stop-loss ${esc(fmt.price(p.stop))} · the rules are checked again at each month end.</p></div>
+        <div><div class="kpi__l">Trades in this holding</div><ul style="margin:4px 0 0;padding-left:16px">${hist || '<li class="muted">No trades recorded.</li>'}</ul></div>
+      </div></td></tr>`;
   }
   function riskCell(v) {
     const [lvl] = FF.ui.level(v / 0.01);
@@ -426,6 +467,25 @@ FF.pages = (function () {
             </tr>`;
           }).join('')}</tbody></table></div>
           <div class="panel__foot">${badge('research')} only tested on past data · ${badge('paper')} trading with practice money · ${badge('decaying')} doing worse than tested, gets less money · ${badge('paused')} stopped until you check it</div>`;
+      },
+    });
+    const closed = block(root);
+    closed.style.marginTop = '14px';
+    panel(closed, {
+      title: 'Finished trades',
+      sub: 'Every holding that was bought and then fully sold, newest first.',
+      flush: true,
+      load: () => api.get('/api/trades'),
+      isEmpty: (d) => !d.length,
+      empty: { title: 'No finished trades yet', text: 'A trade shows up here once a holding is fully sold.' },
+      render(body, d) {
+        const why = (r) => (!r ? '—' : r.startsWith('stop hit') ? 'Stop-loss hit' : 'Rules said sell');
+        body.innerHTML = `<div class="table-wrap"><table class="t"><thead><tr><th>Stock</th><th>Strategy</th><th>Bought</th><th>Sold</th><th class="num">Shares</th><th class="num">Paid</th><th class="num">Sold at</th><th class="num">Gain/loss</th><th class="num">%</th><th>Why sold</th></tr></thead>
+          <tbody>${d.map((t) => `<tr><td class="ticker">${esc(t.ticker)}</td><td>${esc(sname(t.sleeve))}</td>
+            <td>${esc(t.opened ? fmt.date(t.opened) : '—')}</td><td>${esc(fmt.date(t.closed))}</td><td class="num">${esc(t.shares)}</td>
+            <td class="num">${esc(fmt.price(t.entry))}</td><td class="num">${esc(fmt.price(t.exit))}</td>
+            <td class="num ${tone(t.pnl)}">${esc(fmt.usdSigned(t.pnl))}</td><td class="num ${tone(t.pnl_pct)}">${esc(fmt.pctSigned(t.pnl_pct))}</td>
+            <td class="tname">${esc(why(t.reason))}</td></tr>`).join('')}</tbody></table></div>`;
       },
     });
   }
