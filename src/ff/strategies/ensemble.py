@@ -85,7 +85,7 @@ class Ensemble(Strategy):
                         0.6,
                         stop.get(sym),
                         Rationale(
-                            summary=f"Long {sym}, {w:.1%} of the book. " + ". ".join(parts[sym]),
+                            summary=f"Rules want {w:.1%} in {sym}. " + ". ".join(parts[sym]),
                             signals=tuple(sigs[sym]),
                             risk=f"combined stop {stop[sym]:.2f} (widest member stop)"
                             if sym in stop

@@ -215,3 +215,19 @@ def test_overview_series_start_at_zero(client: TestClient) -> None:
         assert s["values"][0] == pytest.approx(0.0, abs=1e-9)
     ids = [p["id"] for p in ov["portfolios"]]
     assert ids == ["track_a", "track_b", "conviction"]
+
+
+def test_holdings_explain_themselves(client: TestClient) -> None:
+    d = client.get("/api/positions").json()
+    assert {s["id"] for s in d["sleeves"]} == {"track_a_systematic", "core_60_40"}
+    for s in d["sleeves"]:
+        assert s["equity"] > 0 and 0 <= s["invested_pct"] <= 1
+        assert sum(h["pct"] for h in s["holdings"]) == pytest.approx(s["invested_pct"], abs=1e-6)
+    for p in d["positions"]:
+        assert p["why"] and p["why"].startswith("Holds ")
+        assert any(h["detail"].startswith("Bought") for h in p["history"])
+    st = client.get("/api/status").json()
+    assert st["last_session"] == "2020-04-30" and "not real-time" in st["cadence"]
+    assert client.get("/api/summary").json()["status"]["last_session"] == "2020-04-30"
+    trades = client.get("/api/trades").json()
+    assert all(t["sleeve"] and t["closed"] for t in trades)

@@ -10,7 +10,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design, the data provid
 
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
-macOS note: if `uv run ff` fails with `No module named 'ff'` (common when the project sits in a Desktop or iCloud-synced folder), macOS has hidden the editable-install `.pth` file and Python skips hidden `.pth` files. Fix it with `chflags nohidden .venv/lib/python3*/site-packages/*.pth`, or install without the editable link: `uv sync --no-editable`.
+macOS note: on a Mac, run commands as `./ff ...` (for example `./ff serve config/paper.yaml`) or through `make`, or add `export UV_NO_EDITABLE=1` to `~/.zshrc` once so plain `uv run ff ...` works too. Otherwise `uv run ff` can fail with `No module named 'ff'`: macOS sometimes hides the editable-install `.pth` file, and Python 3.13+ skips hidden `.pth` files. The launcher installs the package as a normal (non-editable) copy that is rebuilt whenever the code changes, so it never depends on that file.
 
 ```bash
 uv sync                                   # install dependencies

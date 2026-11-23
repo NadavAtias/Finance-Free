@@ -191,6 +191,7 @@ class Backend:
             "unread_alerts": unread,
             "open_recommendations": recs[0]["n"],
             "last_session": self.db.get_json("meta", {}).get("last_session"),
+            "status": self.status(),
         }
 
     def overview(self) -> dict[str, Any]:
@@ -310,11 +311,121 @@ class Backend:
         )
         return {"ok": True}
 
+    def _why(self) -> dict[tuple[str, str], str]:
+        """Latest non-zero target decision per (sleeve, ticker): the reason it is held."""
+        out: dict[tuple[str, str], str] = {}
+        for e in self.db.rows(
+            "SELECT strategy, ticker, detail FROM events WHERE type = 'decision' "
+            "AND detail NOT LIKE 'Holds 0.0%' AND detail NOT LIKE 'Target 0.0%' "
+            "ORDER BY ts DESC, id DESC"
+        ):
+            out.setdefault((e["strategy"], e["ticker"]), e["detail"])
+        return out
+
+    def _history(self) -> dict[tuple[str, str], list[dict[str, Any]]]:
+        out: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for e in self.db.rows(
+            "SELECT ts, strategy, ticker, type, detail FROM events "
+            "WHERE type IN ('fill', 'manual') ORDER BY ts DESC, id DESC"
+        ):
+            out.setdefault((e["strategy"], e["ticker"]), []).append(
+                {"ts": e["ts"], "type": e["type"], "detail": e["detail"]}
+            )
+        return out
+
+    def sleeves(self) -> list[dict[str, Any]]:
+        """Each strategy sleeve: money, cash, and what it holds."""
+        pos = self.positions()
+        last = {
+            r["sleeve"]: r
+            for r in self.db.rows(
+                "SELECT e.* FROM equity e JOIN (SELECT sleeve, MAX(date) AS d FROM equity "
+                "GROUP BY sleeve) m ON e.sleeve = m.sleeve AND e.date = m.d"
+            )
+        }
+        out = []
+        for p, sl in self.cfg.sleeves:
+            row = last.get(sl.id)
+            eq = float(row["equity"]) if row else sl.capital
+            cash = float(row["cash"]) if row else sl.capital
+            held = [x for x in pos if x["strategy"] == sl.id]
+            kinds = (
+                [m["kind"] for m in sl.strategy.params.get("members", [])]
+                if sl.strategy.kind == "ensemble"
+                else [sl.strategy.kind]
+            )
+            out.append(
+                {
+                    "id": sl.id,
+                    "portfolio": p.id,
+                    "name": " + ".join(STRATEGY_INFO.get(k, (k, ""))[0] for k in kinds),
+                    "rules": "; ".join(STRATEGY_INFO.get(k, (k, k))[1] for k in kinds),
+                    "start_capital": sl.capital,
+                    "equity": eq,
+                    "cash": cash,
+                    "invested_pct": (eq - cash) / eq if eq else 0.0,
+                    "return_pct": eq / sl.capital - 1 if sl.capital else 0.0,
+                    "holdings": sorted(
+                        (
+                            {
+                                "key": x["ticker"],
+                                "value": x["market_value"],
+                                "pct": x["market_value"] / eq,
+                            }
+                            for x in held
+                        ),
+                        key=lambda r: -r["value"],
+                    ),
+                }
+            )
+        return out
+
+    def status(self) -> dict[str, Any]:
+        meta = self.db.get_json("meta", {})
+        from ff.markets.calendar import ET, next_session
+
+        last = meta.get("last_session")
+        nxt = next_session(pd.Timestamp(last)) if last else None
+        return {
+            "last_session": last,
+            "updated": meta.get("updated"),
+            "provider": meta.get("provider"),
+            "data_issues": meta.get("data_issues", 0),
+            "cadence": "End of day: one update after each US close (daily prices, not real-time)",
+            "next_update_et": f"{nxt.date()} 16:45 ET" if nxt is not None else None,
+            "tz": str(ET),
+        }
+
+    def trades(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "sleeve": t["sleeve"],
+                "portfolio": t["portfolio"],
+                "ticker": t["ticker"],
+                "opened": t["entry_date"],
+                "closed": t["exit_date"],
+                "shares": t["quantity"],
+                "entry": t["entry_price"],
+                "exit": t["exit_price"],
+                "pnl": t["pnl"],
+                "pnl_pct": t["exit_price"] / t["entry_price"] - 1 if t["entry_price"] else None,
+                "reason": t["reason"],
+            }
+            for t in self.db.rows("SELECT * FROM trades ORDER BY exit_date DESC, id DESC")
+        ]
+
     def positions_payload(self) -> dict[str, Any]:
+        pos = self.positions()
+        why, hist = self._why(), self._history()
+        for p in pos:
+            key = (p["strategy"], p["ticker"])
+            p["why"] = why.get(key)
+            p["history"] = hist.get(key, [])[:20]
         return {
             "as_of": self.db.get_json("meta", {}).get("updated", _now_iso()),
             "equity": self.equity_now(),
-            "positions": self.positions(),
+            "positions": pos,
+            "sleeves": self.sleeves(),
             "flat_portfolios": [],
         }
 
@@ -611,6 +722,14 @@ def create_app(cfg: PaperConfig, dashboard_dir: Path | None = None) -> FastAPI:
     @app.get("/api/signals/events")
     def signal_events() -> Any:
         return j(be.signal_events())
+
+    @app.get("/api/status")
+    def status() -> Any:
+        return j(be.status())
+
+    @app.get("/api/trades")
+    def trades() -> Any:
+        return j(be.trades())
 
     @app.get("/api/journal")
     def journal() -> Any:

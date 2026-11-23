@@ -55,3 +55,9 @@ python_version = "3.11"
 strict = true
 ignore_missing_imports = true
 files = ["src/ff"]
+
+[tool.uv]
+# Rebuild the installed package whenever the code changes. Needed for non-editable
+# installs (UV_NO_EDITABLE=1, the `./ff` launcher and the Makefile), which avoid the
+# editable-install .pth file that macOS can hide and Python 3.13+ then skips.
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/**/*.py" }]

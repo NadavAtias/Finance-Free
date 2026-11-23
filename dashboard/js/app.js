@@ -22,6 +22,7 @@
         <div class="stat"><span class="stat__label">Total money</span><span class="stat__value">${esc(fmt.usd(s.equity))}<small class="${tone(s.equity - s.start_capital)}">${esc(fmt.pctSigned(s.equity / s.start_capital - 1))}</small></span></div>
         <div class="stat"><span class="stat__label">Today</span><span class="stat__value ${tone(s.pnl_today)}">${esc(fmt.usdSigned(s.pnl_today))}<small>${esc(fmt.pctSigned(s.pnl_today_pct, 2))}</small></span></div>
         <div class="stat"><span class="stat__label">Down from high</span><span class="stat__value">${esc(fmt.pct(s.drawdown_pct, 1).replace('-', '−'))}<small class="muted">sells all at −15%</small></span></div>
+        ${s.status ? `<div class="stat" title="${esc(s.status.cadence)}. Next update: ${esc(s.status.next_update_et || '—')}"><span class="stat__label">Prices as of</span><span class="stat__value">${esc(s.status.last_session ? fmt.date(s.status.last_session) : 'not yet')}<small class="muted">daily close</small></span></div>` : ''}
         <div class="stat stat--market"><span class="stat__label">Market · ${esc(s.market.et_time)}</span><span class="stat__value"><span class="badge ${mk ? 'badge--' + mk : ''}"><span class="dot ${mk ? 'dot--' + mk : 'dot--muted'} ${s.market.state === 'open' ? 'dot--pulse' : ''}"></span>${esc(s.market.label)}${s.market.reason ? ' · ' + esc(s.market.reason) : ''}</span></span></div>`;
       $('#navRecCount').textContent = s.open_recommendations || '';
       $('#navAlertCount').textContent = s.unread_alerts || '';
