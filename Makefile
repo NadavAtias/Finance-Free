@@ -1,3 +1,6 @@
+# Non-editable installs: immune to macOS hiding the editable .pth file (see README).
+export UV_NO_EDITABLE := 1
+
 .PHONY: setup test lint backtest validate validate-a demo paper serve
 setup:
 	uv sync
