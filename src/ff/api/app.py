@@ -584,12 +584,20 @@ class Backend:
             },
         }
 
+    def signals(self) -> list[dict[str, Any]]:
+        """The source scoreboard written by the last paper run."""
+        return list(self.db.get_json("signals_scoreboard", []))
+
+    def conviction(self) -> dict[str, Any]:
+        return dict(self.db.get_json("conviction_board", {}))
+
     def signal_events(self) -> list[dict[str, Any]]:
-        """Phase 4 adds the market-intelligence sources; until then the events are the
-        strategies' own price signals behind the latest trade ideas."""
-        out = []
+        """What the market-intelligence sources reported in the last sessions,
+        plus the price signals behind the latest ETF trade ideas."""
+        out = list(self.db.get_json("signals_events", []))
         for r in self.db.rows(
-            "SELECT * FROM recommendations ORDER BY created DESC, ticker LIMIT 30"
+            "SELECT * FROM recommendations WHERE portfolio != 'conviction' "
+            "ORDER BY created DESC, ticker LIMIT 30"
         ):
             out.append(
                 {
@@ -600,7 +608,7 @@ class Backend:
                     "score": (r["confidence"] - 50) / 50 * (1 if r["direction"] == "BUY" else -1),
                 }
             )
-        return out
+        return sorted(out, key=lambda e: e["ts"], reverse=True)[:80]
 
     def journal(self, limit: int = 500) -> list[dict[str, Any]]:
         rows = self.db.rows("SELECT * FROM events ORDER BY ts DESC, id DESC LIMIT ?", (limit,))
@@ -717,7 +725,11 @@ def create_app(cfg: PaperConfig, dashboard_dir: Path | None = None) -> FastAPI:
 
     @app.get("/api/signals")
     def signals() -> Any:
-        return []  # Phase 4: market-intelligence sources and their scoreboard
+        return j(be.signals())
+
+    @app.get("/api/conviction")
+    def conviction() -> Any:
+        return j(be.conviction())
 
     @app.get("/api/signals/events")
     def signal_events() -> Any:

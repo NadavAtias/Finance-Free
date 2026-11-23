@@ -289,30 +289,51 @@
   }
 
   // ---------- signals ----------
+  // Shapes match the live API (src/ff/paper/signals.py). Values are made up but honest in
+  // spirit: most sources barely beat a coin flip, and one has stopped working.
+  const hz = (t5, t21, t63) => ({ 5: { t: t5, mean: null, ic: null, hit: null }, 21: { t: t21, mean: null, ic: null, hit: null }, 63: { t: t63, mean: null, ic: null, hit: null } });
   const SIGNALS = [
-    { id: 'price', name: 'Price & trend', role: 'Picking stocks', status: 'active', hit_90d: 0.56, hit_all: 0.54, n: 1840, ic: 0.041, trust: 0.34,
-      history: [0.52, 0.53, 0.55, 0.54, 0.53, 0.55, 0.56, 0.54, 0.55, 0.57, 0.56, 0.56], note: 'Moving averages, momentum, breakouts' },
-    { id: 'analysts', name: 'Analyst opinions', role: 'Picking stocks', status: 'active', hit_90d: 0.55, hit_all: 0.53, n: 612, ic: 0.032, trust: 0.22,
-      history: [0.51, 0.52, 0.52, 0.53, 0.54, 0.53, 0.52, 0.54, 0.55, 0.55, 0.54, 0.55], note: 'Changes to profit forecasts and price targets' },
-    { id: 'macro', name: 'Economy', role: 'How much to invest', status: 'active', hit_90d: 0.58, hit_all: 0.55, n: 96, ic: 0.027, trust: 0.16,
-      history: [0.50, 0.52, 0.54, 0.55, 0.56, 0.55, 0.57, 0.56, 0.58, 0.57, 0.58, 0.58], note: 'Interest rates, credit, economic data' },
-    { id: 'news', name: 'News mood', role: 'Picking stocks', status: 'probation', hit_90d: 0.51, hit_all: 0.52, n: 2210, ic: 0.012, trust: 0.12,
-      history: [0.54, 0.53, 0.53, 0.52, 0.52, 0.51, 0.52, 0.50, 0.51, 0.51, 0.50, 0.51], note: 'Tone of headlines; less useful since summer' },
-    { id: 'options', name: 'Options bets', role: 'Picking stocks', status: 'probation', hit_90d: 0.53, hit_all: 0.51, n: 344, ic: 0.009, trust: 0.10,
-      history: [0.49, 0.50, 0.50, 0.51, 0.50, 0.52, 0.51, 0.52, 0.53, 0.52, 0.53, 0.53], note: 'Unusually large bets in the options market' },
-    { id: 'reddit', name: 'Reddit', role: 'Warnings only', status: 'risk_flag', hit_90d: 0.47, hit_all: 0.48, n: 905, ic: -0.018, trust: 0.06,
-      history: [0.49, 0.48, 0.48, 0.47, 0.49, 0.48, 0.47, 0.46, 0.48, 0.47, 0.47, 0.47], note: 'Big hype usually means a drop later' },
-    { id: 'stocktwits', name: 'StockTwits', role: 'Not available', status: 'unavailable', hit_90d: null, hit_all: null, n: 0, ic: null, trust: 0,
-      history: [], note: 'Their data is closed to new users' },
+    { id: 'insider_buying', name: 'Insider buying', role: 'Picking stocks', status: 'active', horizon: 63, hit_90d: 0.58, hit_all: 0.55, n: 1312, months: 214, ic: 0.061, t: 2.4, edge: 0.0041, trust: 0.52,
+      by_horizon: hz(0.9, 1.8, 2.4), history: [0.52, 0.55, 0.61, 0.5, 0.57, 0.54, 0.6, 0.53, 0.58, 0.56, 0.62, 0.55],
+      note: "Officers and directors buying their own company's stock (routine buyers removed)", evidence: 'Lakonishok & Lee 2001; Cohen, Malloy & Pomorski 2012',
+      data: { ok: true, updated: '2026-11-20', problem: '', records: 1388 } },
+    { id: 'price_momentum', name: 'Price momentum', role: 'Picking stocks', status: 'probation', horizon: 21, hit_90d: 0.51, hit_all: 0.53, n: 22600, months: 226, ic: 0.031, t: 1.6, edge: 0.0012, trust: 0.48,
+      by_horizon: hz(1.1, 1.6, 1.2), history: [0.55, 0.5, 0.49, 0.52, 0.59, 0.54, 0.57, 0.46, 0.53, 0.58, 0.48, 0.5],
+      note: '12-month return, skipping the last month, ranked against the other stocks', evidence: 'Jegadeesh & Titman 1993; Asness, Moskowitz & Pedersen 2013',
+      data: { ok: true, updated: '2026-11-20', problem: '', records: 22600 } },
+    { id: 'earnings_reaction', name: 'Earnings reaction', role: 'Picking stocks', status: 'off', horizon: 63, hit_90d: 0.47, hit_all: 0.51, n: 7310, months: 224, ic: 0.008, t: 0.4, edge: 0.0002, trust: 0,
+      by_horizon: hz(0.7, 0.5, 0.4), history: [0.5, 0.47, 0.52, 0.49, 0.51, 0.46, 0.53, 0.5, 0.48, 0.52, 0.47, 0.49],
+      note: 'How the stock moved vs SPY in the 3 days around its earnings report', evidence: 'Bernard & Thomas 1989; Brandt et al. 2008; Martineau 2022 (it has faded)',
+      data: { ok: true, updated: '2026-11-20', problem: '', records: 7310 } },
+    { id: 'macro_regime', name: 'Economy', role: 'How much to invest', status: 'probation', horizon: 21, hit_90d: 0.6, hit_all: 0.56, n: 4700, months: 226, ic: 0.09, t: 1.3, edge: null, trust: 0.39,
+      by_horizon: hz(0.6, 1.3, 1.0), history: [0.5, 0.52, 0.54, 0.55, 0.56, 0.55, 0.57, 0.56, 0.58, 0.57, 0.58, 0.58],
+      note: 'Fear index (VIX), yield curve and credit spreads', evidence: 'Estrella & Mishkin 1998; Gilchrist & Zakrajsek 2012; Welch & Goyal 2008 (skeptic)',
+      data: { ok: true, updated: '2026-11-19', problem: '', records: 4700 } },
   ];
+  const CONVICTION = {
+    as_of: '2026-11-20', entry_score: 0.3, exit_score: 0.0, regime: 0.18, scale: 1.0, trust: 0.83,
+    regime_text: 'risk-on: VIX 15.8 (1y median 17.2), 10y-3m +0.41%, Baa spread 1.62% (-0.08 in 3 months)',
+    weights: { insider_buying: 0.52, price_momentum: 0.48, earnings_reaction: 0 },
+    names: { insider_buying: 'Insider buying', price_momentum: 'Price momentum', earnings_reaction: 'Earnings reaction', macro_regime: 'Economy' },
+    stocks: [
+      ['JPM', 'JPMorgan Chase', 'Financials', true, [['insider_buying', 0.36, '2 insiders bought $3.10M in 30 days (incl. CEO/CFO): James Dimon, Stephen Burke; filed 14 Nov 2026'], ['price_momentum', 0.29, '12-1 month return +31%, rank 86 of 100']]],
+      ['AVGO', 'Broadcom', 'Technology', true, [['price_momentum', 0.4, '12-1 month return +64%, rank 99 of 100'], ['insider_buying', 0.19, '1 insider bought $1.20M in 30 days: Henry Samueli; filed 2 Oct 2026']]],
+      ['CVS', 'CVS Health', 'Health care', false, [['insider_buying', 0.43, '3 insiders bought $2.45M in 30 days (incl. CEO/CFO): ...; filed 18 Nov 2026'], ['price_momentum', -0.09, '12-1 month return -6%, rank 31 of 100']]],
+      ['COST', 'Costco', 'Consumer staples', false, [['price_momentum', 0.27, '12-1 month return +24%, rank 79 of 100']]],
+      ['GE', 'GE Aerospace', 'Industrials', false, [['price_momentum', 0.38, '12-1 month return +52%, rank 97 of 100']]],
+      ['DIS', 'Disney', 'Communication', false, [['insider_buying', 0.21, '1 insider bought $0.40M in 30 days: ...; filed 7 Nov 2026'], ['price_momentum', -0.05, '12-1 month return -2%, rank 44 of 100']]],
+      ['INTC', 'Intel', 'Technology', false, [['price_momentum', -0.46, '12-1 month return -38%, rank 2 of 100']]],
+    ].map(([ticker, name, sector, held, parts]) => ({ ticker, name, sector, held,
+      score: Math.round(parts.reduce((a, p) => a + p[1], 0) * 1000) / 1000,
+      parts: parts.map(([source, contrib, detail]) => ({ source, contrib, detail })) })),
+    calendar: [{ date: '2026-12-04', event: 'Jobs report' }, { date: '2026-12-09', event: 'Fed rate decision (FOMC)' }, { date: '2026-12-10', event: 'CPI inflation report' }],
+  };
   const SIGNAL_EVENTS = [
-    { ts: '2026-11-20T20:58:00Z', source: 'Price', ticker: 'XLV', text: '50-day average moved above the 200-day average', score: 0.62 },
-    { ts: '2026-11-20T20:41:00Z', source: 'Reddit', ticker: 'AMD', text: 'Mentions far above normal (hype warning)', score: -0.30 },
-    { ts: '2026-11-20T19:12:00Z', source: 'Options', ticker: 'AMD', text: 'More than twice the usual bets on a rise', score: 0.21 },
-    { ts: '2026-11-20T17:30:00Z', source: 'Analysts', ticker: 'JPM', text: 'A large bank cut its rating to Neutral, target $255', score: -0.25 },
-    { ts: '2026-11-20T15:05:00Z', source: 'News', ticker: 'MSFT', text: 'Slightly negative tone across 48 headlines (cloud pricing)', score: -0.18 },
-    { ts: '2026-11-20T13:00:00Z', source: 'Economy', ticker: '—', text: 'Gap between 10-year and 2-year rates shrank 0.09% this week', score: -0.05 },
-    { ts: '2026-11-19T21:00:00Z', source: 'Price', ticker: 'MSFT', text: 'Sixth day in a row closing below the 50-day average', score: -0.40 },
+    { ts: '2026-11-20T21:00:00Z', source: 'Insider buying', source_id: 'insider_buying', ticker: 'CVS', text: '3 insiders bought $2.45M in 30 days (incl. CEO/CFO); filed 18 Nov 2026', score: 1.0 },
+    { ts: '2026-11-20T21:00:00Z', source: 'Economy', source_id: 'macro_regime', ticker: 'Market', text: 'risk-on: VIX 15.8 (1y median 17.2), 10y-3m +0.41%, Baa spread 1.62% (-0.08 in 3 months)', score: 0.18 },
+    { ts: '2026-11-19T21:00:00Z', source: 'Earnings reaction', source_id: 'earnings_reaction', ticker: 'NVDA', text: 'moved +4.8% vs SPY in the 3 days around its 17 Nov 2026 earnings report', score: 0.8 },
+    { ts: '2026-11-17T21:00:00Z', source: 'Insider buying', source_id: 'insider_buying', ticker: 'JPM', text: '2 insiders bought $3.10M in 30 days (incl. CEO/CFO); filed 14 Nov 2026', score: 1.0 },
+    { ts: '2026-11-14T21:00:00Z', source: 'Earnings reaction', source_id: 'earnings_reaction', ticker: 'DIS', text: 'moved -3.9% vs SPY in the 3 days around its 12 Nov 2026 earnings report', score: -0.65 },
   ];
   // ---------- journal ----------
   function buildJournal() {
@@ -410,6 +431,7 @@
     'GET /api/risk': () => riskPayload(),
     'GET /api/signals': () => SIGNALS,
     'GET /api/signals/events': () => SIGNAL_EVENTS,
+    'GET /api/conviction': () => CONVICTION,
     'GET /api/journal': () => JOURNAL,
     'GET /api/trades': () => [],
     'GET /api/alerts': () => ALERTS,

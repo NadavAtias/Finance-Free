@@ -196,3 +196,87 @@ table.t { font-size: 12.5px; }
 .dir { border-radius: 999px; padding: 4px 8px; letter-spacing: .02em; border: 0; color: #fff; }
 .dir--buy { background: var(--up); color: #fff; }
 .dir--sell { background: var(--down); color: #fff; }
+
+/* ---------- the conviction board (signals hero) ----------
+   Same ink slab as the race. Each stock is a lane; colored pieces are what each
+   source adds to its score; the dashed line is where the system starts buying. */
+:root {
+  --src-insider: #ff7a59;   /* coral */
+  --src-momentum: #1fb5a8;  /* teal */
+  --src-earnings: #9bd13b;  /* lime */
+  --src-macro: #8aa0ff;     /* periwinkle */
+}
+:root[data-theme="dark"] { --src-insider: #ff8d6f; --src-momentum: #33cbbd; --src-earnings: #addf55; --src-macro: #9cb0ff; }
+.board {
+  background: var(--ink); color: var(--on-ink); border-radius: 20px; padding: 22px 26px 22px;
+  position: relative; overflow: hidden;
+}
+.board__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 22px; }
+.board__head h2 { font-size: 26px; color: #fff; margin: 0; }
+.board__head p { margin: 4px 0 0; color: var(--on-ink-2); font-size: 12.5px; max-width: 62ch; }
+.board__head .board__verdict { color: #fff; font: 600 15px/1.35 var(--display); max-width: 40ch; text-align: right; margin: 0; }
+.board__lanes { position: relative; display: flex; flex-direction: column; gap: 9px; padding-top: 6px; }
+.board__lane { display: grid; grid-template-columns: 150px 1fr 76px; align-items: center; gap: 14px; }
+.board__name { display: flex; flex-direction: column; min-width: 0; }
+.board__name b { font: 700 15px/1.1 var(--display); color: #fff; }
+.board__name span { font-size: 11.5px; color: var(--on-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.board__track { position: relative; height: 20px; border-radius: 6px; background: rgba(255, 255, 255, .045); }
+.board__zero { position: absolute; left: var(--z); top: -3px; bottom: -3px; border-left: 1px solid rgba(255, 255, 255, .22); }
+.board__seg {
+  position: absolute; top: 3px; bottom: 3px; background: var(--c); border-radius: 3px; cursor: help;
+  box-shadow: inset -2px 0 0 var(--ink);
+}
+.board__seg:hover { filter: brightness(1.15); }
+.board__lane:not(.is-over) .board__seg { opacity: .55; }
+.board__lane.is-over .board__track { background: rgba(255, 255, 255, .08); }
+.board__lane.is-over .board__seg { box-shadow: inset -2px 0 0 var(--ink), 0 0 14px color-mix(in srgb, var(--c) 45%, transparent); }
+.board__v { font: 700 16px/1 var(--display); text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.board .board__v.up { color: #4fe0a8; }
+.board .board__v.down { color: #ff8a90; }
+.board__v em { font: 600 10.5px/1 var(--font); font-style: normal; color: var(--ink); background: var(--s3); border-radius: 999px; padding: 3px 7px; }
+.board__line {
+  position: absolute; top: -10px; bottom: -6px; width: 0; pointer-events: none; z-index: 1;
+  left: calc(150px + 14px + (100% - 150px - 76px - 28px) * var(--bar-frac, 0));
+  border-left: 1.5px dashed rgba(255, 255, 255, .5);
+}
+.board__line span { position: absolute; top: -8px; left: 6px; font-size: 10.5px; color: var(--on-ink); white-space: nowrap; }
+.board__legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 18px; font-size: 12px; color: var(--on-ink-2); align-items: center; }
+.board__legend span { display: inline-flex; align-items: center; gap: 7px; }
+.board__legend i { width: 14px; height: 8px; border-radius: 2px; background: var(--c); }
+.board__legend b { color: #fff; font-weight: 600; }
+.board__legend .board__note { margin-left: auto; font-style: italic; }
+.board__seg { transform-origin: left center; animation: ffGrowX .9s var(--ease-out) both; animation-delay: calc(.2s + var(--i, 0) * .05s); }
+.board__lane .board__seg { animation-delay: calc(.2s + var(--i) * .05s); }
+
+.src-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-right: 7px; vertical-align: 1px; }
+.hz { display: inline-flex; align-items: flex-end; gap: 3px; height: 22px; }
+.hz i { width: 7px; border-radius: 2px 2px 0 0; background: var(--border-strong); }
+.hz i.is-main { background: var(--text-2); }
+.hz i.neg { background: var(--down); opacity: .6; }
+
+.mood { padding: 4px 2px; }
+.mood__v { font: 700 26px/1 var(--display); letter-spacing: -0.02em; }
+.mood__v span { font: 500 13px var(--font); color: var(--text-3); margin-left: 6px; }
+.mood__track { position: relative; height: 10px; border-radius: 999px; margin: 16px 0 6px;
+  background: linear-gradient(90deg, var(--down), color-mix(in srgb, var(--warning) 70%, var(--surface-3)) 50%, var(--up)); }
+.mood__track i { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+  background: var(--surface); border: 3px solid var(--text); animation: ffFade .6s .3s ease both; }
+.mood__ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); }
+.mood p { margin: 12px 0 0; font-size: 12.5px; color: var(--text-2); max-width: 62ch; }
+.mood .mood__effect { color: var(--text); }
+.cal { list-style: none; margin: 0; padding: 0; }
+.cal li { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.cal li:last-child { border-bottom: 0; }
+.cal time { font: 700 13px var(--display); }
+
+@media (max-width: 640px) {
+  .board { padding: 18px 16px 20px; border-radius: 16px; }
+  .board__head .board__verdict { text-align: left; }
+  .board__lane { grid-template-columns: 58px 1fr 52px; gap: 8px; }
+  .board__name span { display: none; }
+  .board__line { left: calc(58px + 8px + (100% - 58px - 52px - 16px) * var(--bar-frac, 0)); }
+  .board__legend .board__note { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board__seg, .mood__track i { animation: none !important; }
+}

@@ -352,9 +352,10 @@ Each phase ends with runnable code, tests, and a short report.
 - **Exit:** system runs unattended for 2 weeks with daily Telegram summaries.
 
 ### Phase 4: Market intelligence v1 and System Conviction
-- SignalSource framework + IC/decay scoring + scoreboard page.
-- Sources: macro (FRED, VIX, economic calendar), SEC insider buys (Cohen, Malloy & Pomorski 2012), earnings surprises/PEAD (Bernard & Thomas 1989), analyst revisions, short interest.
-- System Conviction portfolio: rules-based signal combiner first, weighted by measured IC.
+- SignalSource framework + IC/decay scoring + scoreboard page. **Built** (`src/ff/signals/`).
+- Sources: macro (FRED VIX, 10y-3m, Baa spread; FOMC calendar, CPI/jobs dates with a free FRED key), SEC insider buys with the routine-trader filter (Cohen, Malloy & Pomorski 2012), earnings reaction around 8-K Item 2.02 as the free stand-in for earnings surprises (Brandt et al. 2008), and price momentum as the baseline. **Built.**
+- Still open: analyst revisions (needs Finnhub key; free tier has little history), short interest (FINRA files), SUE from XBRL EPS.
+- System Conviction portfolio: rules-based combiner, source weights learned point-in-time from each source's scored record and shrunk toward zero. **Built**; `config/validate_conviction.yaml` validates it with the Phase 2 pipeline.
 
 ### Phase 5: Track B intraday research
 - Minute data (likely first paid subscription), intraday sim: spread from quotes, latency, volume-limited fills, end-of-day flattening, halts.

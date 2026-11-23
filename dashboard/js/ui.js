@@ -114,6 +114,7 @@ FF.ui = (function () {
   const STATUS = {
     paper: ['good', 'Practice'], research: ['info', 'Testing'], decaying: ['serious', 'Slipping'], paused: ['critical', 'Paused'],
     active: ['good', 'Working'], probation: ['warning', 'On trial'], risk_flag: ['serious', 'Warnings only'], unavailable: ['', 'Not available'],
+    insufficient: ['', 'Still learning'], off: ['critical', 'Ignored'],
   };
   function badge(status) {
     const [t, label] = STATUS[status] || ['', status];

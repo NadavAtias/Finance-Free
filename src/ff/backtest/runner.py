@@ -21,6 +21,7 @@ from ff.data.store import BarStore, DataIssue, make_provider
 from ff.data.view import MarketData
 from ff.markets.us import CostModel, USMarket
 from ff.risk.engine import RiskEngine
+from ff.signals.base import SignalStore
 from ff.strategies.base import build_strategy
 
 log = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ class Prepared:
     end: pd.Timestamp
     provider: ProviderCaps
     issues: list[DataIssue]
+    signals: SignalStore | None = None
 
 
 def prepare(cfg: RunConfig, refresh: bool = False) -> Prepared:
@@ -62,6 +64,12 @@ def prepare(cfg: RunConfig, refresh: bool = False) -> Prepared:
     provider = make_provider(cfg.provider)
     store = BarStore(provider, cfg.data_dir)
     load_from = start - pd.Timedelta(days=WARMUP_CALENDAR_DAYS)
+    if cfg.signals:
+        # sources are scored on their whole history, so load prices from its start
+        load_from = min(
+            load_from,
+            pd.Timestamp(cfg.signals.get("history_start", "2007-01-01")) - pd.Timedelta(days=400),
+        )
     bars, issues = store.load(_symbols(cfg), load_from, end, refresh=refresh)
     data = MarketData(bars)
     sessions = data.sessions("SPY")
@@ -72,7 +80,20 @@ def prepare(cfg: RunConfig, refresh: bool = False) -> Prepared:
         rate = store.get(cfg.cash_rate_symbol, load_from, end, refresh=refresh)["close"] / 100.0
     else:
         rate = pd.Series(0.0, index=sessions)
-    return Prepared(data, rate.astype(float), start, end, provider.caps, issues)
+    signals = None
+    if cfg.signals:
+        from ff.signals.build import SignalsConfig, build_store
+
+        scfg = SignalsConfig.from_dict(cfg.signals, cfg.universe)
+        signals = build_store(
+            scfg,
+            data,
+            cfg.data_dir,
+            end,
+            refresh=refresh,
+            offline_only=provider.caps.name == "synthetic",
+        )
+    return Prepared(data, rate.astype(float), start, end, provider.caps, issues, signals)
 
 
 def run_strategy(
@@ -106,7 +127,14 @@ def run_strategy(
     )
     market = USMarket(CostModel(costs), cfg.settlement_days)
     engine = BacktestEngine(
-        strat, prep.data, market, risk, cfg.initial_capital, audit, cash_rate=prep.cash_rate
+        strat,
+        prep.data,
+        market,
+        risk,
+        cfg.initial_capital,
+        audit,
+        cash_rate=prep.cash_rate,
+        signals=prep.signals,
     )
     try:
         return engine.run(start or prep.start, end or prep.end)

@@ -19,6 +19,7 @@ class SleeveConfig:
     strategy: StrategyConfig
     universe: list[str]
     benchmark_rules: bool = False
+    universe_file: str | None = None
 
 
 @dataclass
@@ -56,6 +57,8 @@ class PaperConfig:
     settlement_days: int = 1
     cash_rate_symbol: str | None = "^IRX"
     cash_rate_fixed: float | None = None
+    #: Phase 4 signal sources (``ff.signals.build.SignalsConfig``)
+    signals: dict[str, Any] = field(default_factory=dict)
 
     @property
     def sleeves(self) -> list[tuple[PortfolioConfig, SleeveConfig]]:
@@ -99,19 +102,39 @@ class PaperConfig:
             settlement_days=self.settlement_days,
             cash_rate_symbol=self.cash_rate_symbol,
             cash_rate_fixed=self.cash_rate_fixed,
+            signals=self.signals_config(),
         )
+
+    def signals_config(self) -> dict[str, Any]:
+        """The signals block with its universe: every sleeve that reads signals."""
+        if not self.signals:
+            return {}
+        from ff.strategies.base import strategy_class
+
+        uni: list[str] = list(self.signals.get("universe", []))
+        for _, s in self.sleeves:
+            cls = strategy_class(s.strategy.kind)
+            if cls is not None and cls.needs_signals:
+                uni += [t for t in s.universe if t not in uni]
+        return {**self.signals, "universe": uni}
 
 
 def _sleeve(d: dict[str, Any]) -> SleeveConfig:
+    from ff.core.universe import tickers
+
     st = d["strategy"]
     params = dict(st.get("params", {}))
     universe = list(d.get("universe") or params.get("weights", {}) or params.get("symbols", []))
+    if d.get("universe_file"):
+        universe += [t for t in tickers(d["universe_file"]) if t not in universe]
+        params.setdefault("universe_file", d["universe_file"])
     return SleeveConfig(
         id=d["id"],
         capital=float(d["capital"]),
         strategy=StrategyConfig(d["id"], st["kind"], params),
         universe=universe,
         benchmark_rules=bool(d.get("benchmark_rules", False)),
+        universe_file=d.get("universe_file"),
     )
 
 
@@ -140,4 +163,5 @@ def load_paper_config(path: str | Path) -> PaperConfig:
         settlement_days=int(raw.get("settlement_days", 1)),
         cash_rate_symbol=raw.get("cash_rate_symbol", "^IRX"),
         cash_rate_fixed=raw.get("cash_rate_fixed"),
+        signals=dict(raw.get("signals", {})),
     )

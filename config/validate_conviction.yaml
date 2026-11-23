@@ -1,0 +1,71 @@
+# Phase 4: validate the System Conviction book before trusting it.
+# `ff validate config/validate_conviction.yaml` (first run downloads the signal history).
+#
+# Survivorship warning: the universe is today's 100 large caps, so the years
+# before 2026 are flattered. Signal scores are measured against the universe's
+# own average to net out most of it, but read absolute returns as optimistic.
+name: validate_conviction
+start: 2010-01-01            # sources need ~2 years of scored history before they get weight
+end: null
+initial_capital: 100000
+provider: yahoo
+holdout_start: 2023-01-01    # locked until opened once with --open-holdout
+
+universe_file: config/universes/us_large_cap.yaml
+universe: []
+
+strategy:
+  id: system_conviction
+  kind: system_conviction
+  params:
+    max_positions: 10
+    entry_score: 0.30
+    exit_score: 0.0
+    atr_stop_mult: 2.5
+    reward_risk: 2.0
+    max_hold: 63
+    max_per_sector: 3
+    cooldown: 21
+    universe_file: config/universes/us_large_cap.yaml
+
+signals:
+  sources: [price_momentum, insider_buying, earnings_reaction, macro_regime]
+  history_start: 2008-01-01
+
+benchmarks:
+  - id: spy_buy_hold
+    kind: buy_and_hold
+    params: {symbols: [SPY]}
+  - id: sixty_forty
+    kind: fixed_mix
+    params: {weights: {SPY: 0.6, IEF: 0.4}}
+
+costs:
+  half_spread_bps: 2.0       # large-cap stocks: a little wider than the big ETFs
+  slippage_bps: 3.0
+  max_participation: 0.01
+
+risk:
+  max_risk_per_trade: 0.01
+  max_position_weight: 0.12
+  max_gross_exposure: 1.0
+  daily_loss_limit: 0.02
+  max_drawdown: 0.15
+  kill_switch_file: KILL_SWITCH
+
+settlement_days: 1
+cash_rate_symbol: "^IRX"
+
+validation:
+  # 3 x 2 = 6 settings around the defaults; every one counts against the Deflated Sharpe.
+  grid:
+    entry_score: [0.2, 0.3, 0.4]
+    max_positions: [8, 12]
+  train_years: 4
+  test_years: 1
+  pbo_blocks: 12
+  cost_stress: 2.0
+  blend_with: sixty_forty
+  blend_weight: 0.5
+  min_dsr: 0.95
+  max_pbo: 0.5

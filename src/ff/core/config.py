@@ -63,6 +63,8 @@ class RunConfig:
     # Validation (Phase 2): sessions on/after this date are the locked hold-out.
     holdout_start: str | None = None
     validation: dict[str, Any] = field(default_factory=dict)
+    # Phase 4: market-intelligence signal sources (see ff.signals.build.SignalsConfig)
+    signals: dict[str, Any] = field(default_factory=dict)
 
     def fingerprint(self) -> str:
         blob = json.dumps(asdict(self), sort_keys=True, default=str).encode()
@@ -73,6 +75,16 @@ def _strategy(d: dict[str, Any]) -> StrategyConfig:
     return StrategyConfig(id=d["id"], kind=d["kind"], params=d.get("params", {}))
 
 
+def _universe(raw: dict[str, Any]) -> list[str]:
+    """``universe`` list, plus every ticker of ``universe_file`` if given."""
+    from ff.core.universe import tickers
+
+    out = list(raw.get("universe") or [])
+    if raw.get("universe_file"):
+        out += [t for t in tickers(raw["universe_file"]) if t not in out]
+    return out
+
+
 def load_config(path: str | Path) -> RunConfig:
     raw = yaml.safe_load(Path(path).read_text())
     return RunConfig(
@@ -81,7 +93,7 @@ def load_config(path: str | Path) -> RunConfig:
         end=str(raw["end"]) if raw.get("end") else None,
         initial_capital=float(raw.get("initial_capital", 100_000)),
         provider=raw.get("provider", "stooq"),
-        universe=list(raw["universe"]),
+        universe=_universe(raw),
         strategy=_strategy(raw["strategy"]),
         benchmarks=[_strategy(b) for b in raw.get("benchmarks", [])],
         costs=CostConfig(**raw.get("costs", {})),
@@ -93,4 +105,5 @@ def load_config(path: str | Path) -> RunConfig:
         cash_rate_fixed=raw.get("cash_rate_fixed"),
         holdout_start=str(raw["holdout_start"]) if raw.get("holdout_start") else None,
         validation=dict(raw.get("validation", {})),
+        signals=dict(raw.get("signals", {})),
     )
