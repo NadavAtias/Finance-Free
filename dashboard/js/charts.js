@@ -60,6 +60,7 @@ FF.charts = (function () {
       const every = Math.max(1, Math.ceil(monthStarts.length / Math.max(2, Math.floor(iw / 90))));
       monthStarts.forEach((i, k) => { if (k % every === 0) xt.push(i); });
 
+      const first = !el._drawn;
       let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label || 'Line chart')}">`;
       ticks.forEach((t) => {
         s += `<line class="${Math.abs(t) < 1e-9 ? 'zero' : 'gridline'}" x1="${m.l}" x2="${m.l + iw}" y1="${y(t)}" y2="${y(t)}"/>`;
@@ -73,13 +74,14 @@ FF.charts = (function () {
         let d = `M${x(0)},${y(0)}`;
         ser.values.forEach((v, i) => { d += `L${x(i).toFixed(1)},${y(v).toFixed(1)}`; });
         d += `L${x(n - 1)},${y(0)}Z`;
-        s += `<path d="${d}" style="fill:${ser.color};opacity:.14"/>`;
+        s += `<path class="${first ? 'area--draw' : ''}" d="${d}" style="fill:${ser.color};opacity:.14"/>`;
       });
       // lines: benchmarks first so portfolios sit on top
       [...series].sort((a, b) => (b.bench ? 1 : 0) - (a.bench ? 1 : 0)).forEach((ser) => {
         let d = '';
         ser.values.forEach((v, i) => { d += (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1); });
-        s += `<path class="series ${ser.bench ? 'series--bench' : ''}" d="${d}" style="stroke:${ser.color}" ${ser.dash ? `stroke-dasharray="${ser.dash}"` : ''}/>`;
+        const anim = first && !ser.dash;
+        s += `<path class="series ${ser.bench ? 'series--bench' : ''} ${anim ? 'series--draw' : ''}" d="${d}" style="stroke:${ser.color}" ${anim ? 'pathLength="1"' : ''} ${ser.dash ? `stroke-dasharray="${ser.dash}"` : ''}/>`;
       });
 
       // direct end labels with simple collision avoidance
@@ -98,6 +100,7 @@ FF.charts = (function () {
       series.forEach((ser) => { s += `<circle class="hover-dot" r="4" style="fill:${ser.color}" data-id="${esc(ser.id)}"/>`; });
       s += `</g><rect class="hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/></svg>`;
       el.innerHTML = s;
+      el._drawn = true;
 
       const svg = el.querySelector('svg');
       const g = svg.querySelector('.hover');
@@ -132,7 +135,7 @@ FF.charts = (function () {
     const y = (v) => h - 2 - ((v - min) / (max - min || 1)) * (h - 4);
     const d = values.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1)).join('');
     const refLine = ref != null ? `<line x1="0" x2="${w}" y1="${y(ref)}" y2="${y(ref)}" stroke-dasharray="2 2" style="stroke:var(--axis)"/>` : '';
-    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true" style="display:inline-block;vertical-align:middle">${refLine}<path d="${d}" fill="none" stroke-width="1.5" style="stroke:${color}"/><circle cx="${x(values.length - 1)}" cy="${y(values[values.length - 1])}" r="2" style="fill:${color}"/></svg>`;
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true" style="display:inline-block;vertical-align:middle">${refLine}<path class="spark--draw" pathLength="1" d="${d}" fill="none" stroke-width="1.5" style="stroke:${color}"/><circle cx="${x(values.length - 1)}" cy="${y(values[values.length - 1])}" r="2" style="fill:${color}"/></svg>`;
   }
 
   /**
@@ -152,7 +155,7 @@ FF.charts = (function () {
     el.innerHTML = `<div class="gauge">
       <svg viewBox="0 0 200 104" role="img" aria-label="${esc(opts.label)}: ${esc(opts.format(opts.value))} of ${esc(opts.format(opts.limit))} limit">
         <path class="track" d="${arc(0, 1)}" fill="none" stroke-width="14" stroke-linecap="round"/>
-        ${frac > 0.003 ? `<path d="${arc(0, Math.max(frac, 0.01))}" fill="none" stroke-width="14" stroke-linecap="round" style="stroke:var(--${lvl})"/>` : ''}
+        ${frac > 0.003 ? `<path class="gauge__arc" pathLength="1" d="${arc(0, Math.max(frac, 0.01))}" fill="none" stroke-width="14" stroke-linecap="round" style="stroke:var(--${lvl})"/>` : ''}
         <line class="limit-tick" x1="${lx0}" y1="${ly0}" x2="${lx1}" y2="${ly1}"/>
         <text x="${lx1 + 4}" y="${ly1 - 2}" style="font:10px var(--font);fill:var(--text-2)">limit</text>
       </svg>

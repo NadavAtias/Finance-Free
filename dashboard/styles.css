@@ -1,103 +1,114 @@
-/* Finance Free · paper desk
-   Tokens first; components below read only tokens. */
+/* Finance Free · practice desk
+   Tokens first; components below read only tokens.
+   Identity: ink navigation slab, fog paper, and one vivid color per strategy
+   (cobalt, saffron, orchid) used everywhere that strategy appears. */
 
 :root {
   color-scheme: light;
-  --bg: #f3f3f1;
-  --surface: #fcfcfb;
-  --surface-2: #f0efec;
-  --surface-3: #e8e7e3;
-  --border: #e1e0db;
-  --border-strong: #cfcec8;
-  --text: #0b0b0b;
-  --text-2: #52514e;
-  --text-3: #75746f;
-  --grid: #ebeae6;
-  --axis: #a8a7a1;
+  --bg: #e9edf2;          /* fog */
+  --surface: #ffffff;     /* paper */
+  --surface-2: #f2f5f8;
+  --surface-3: #e3e8ef;
+  --border: #dce2ea;
+  --border-strong: #c3ccd8;
+  --text: #101c33;        /* ink */
+  --text-2: #46536a;
+  --text-3: #6b7890;
+  --grid: #e8ecf2;
+  --axis: #9aa6b8;
 
-  --s1: #2a78d6;   /* Track A */
-  --s2: #eb6834;   /* Track B */
-  --s3: #1baf7a;   /* Conviction */
-  --b1: #3d3c39;   /* SPY */
-  --b2: #6e6d68;   /* QQQ */
-  --b3: #9b9a94;   /* 60/40 */
+  --ink: #101c33;
+  --ink-2: #1a2946;
+  --on-ink: #eef2f9;
+  --on-ink-2: #9fb0cc;
 
-  --up: #0a7a2f;
-  --down: #c62f2f;
-  --good: #0ca30c;
-  --warning: #fab219;
-  --serious: #ec835a;
-  --critical: #d03b3b;
-  --good-bg: #e5f4e5;
-  --warning-bg: #fdf2d8;
-  --serious-bg: #fbe8df;
-  --critical-bg: #fae3e3;
-  --info-bg: #e3eefb;
-  --info: #2a78d6;
+  --s1: #2d5bff;   /* Track A · cobalt */
+  --s2: #f2a007;   /* Track B · saffron */
+  --s3: #b04be0;   /* Conviction · orchid */
+  --b1: #33405a;   /* SPY */
+  --b2: #6b7890;   /* QQQ */
+  --b3: #9aa6b8;   /* 60/40 */
 
-  --div-neg: #1c5cab;
-  --div-mid: #f0efec;
-  --div-pos: #b8312f;
+  --up: #0b8a64;
+  --down: #d8333c;
+  --good: #12a87a;
+  --warning: #f2a007;
+  --serious: #f0743c;
+  --critical: #d8333c;
+  --good-bg: #ddf4ea;
+  --warning-bg: #fdf0d2;
+  --serious-bg: #fde5d8;
+  --critical-bg: #fbe1e3;
+  --info-bg: #e2e9ff;
+  --info: #2d5bff;
 
-  --kill: #c62f2f;
-  --kill-strong: #a92424;
-  --focus: #2a78d6;
-  --shadow: 0 1px 2px rgba(20, 20, 18, .06), 0 1px 1px rgba(20, 20, 18, .04);
+  --div-neg: #2d5bff;
+  --div-mid: #f2f5f8;
+  --div-pos: #d8333c;
 
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  --r: 8px;
-  --r-sm: 5px;
-  --nav-w: 216px;
+  --kill: #d8333c;
+  --kill-strong: #b4232c;
+  --focus: #2d5bff;
+  --shadow: none;
+
+  --display: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+  --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --mono: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --r: 14px;
+  --r-sm: 8px;
+  --nav-w: 232px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1322;
+  --surface: #121c30;
+  --surface-2: #18243b;
+  --surface-3: #213049;
+  --border: #22304a;
+  --border-strong: #33435f;
+  --text: #eef2f9;
+  --text-2: #b6c2d6;
+  --text-3: #8492ab;
+  --grid: #1c2840;
+  --axis: #4a5a77;
+  --ink: #070d19;
+  --ink-2: #111b2e;
+  --s1: #5b80ff; --s2: #f7b334; --s3: #c573f0;
+  --b1: #d3dbe8; --b2: #9aa6b8; --b3: #6b7890;
+  --up: #34c793; --down: #ff6b73;
+  --good-bg: #0f3328; --warning-bg: #3a2c0c; --serious-bg: #3d2215; --critical-bg: #3f171c; --info-bg: #172552;
+  --info: #7d9bff;
+  --div-neg: #5b80ff; --div-mid: #213049; --div-pos: #ff6b73;
+  --kill: #e0444d; --kill-strong: #ff6b73;
+  --focus: #7d9bff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #121211;
-    --surface: #1a1a19;
-    --surface-2: #222220;
-    --surface-3: #2b2b29;
-    --border: #2d2d2a;
-    --border-strong: #3c3c38;
-    --text: #f0efec;
-    --text-2: #c3c2b7;
-    --text-3: #949389;
-    --grid: #262624;
-    --axis: #5c5b56;
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
-    --b1: #d6d5cc; --b2: #a3a299; --b3: #77766f;
-    --up: #3fbf5f; --down: #f07070;
-    --good-bg: #16301a; --warning-bg: #3a2f12; --serious-bg: #3b2418; --critical-bg: #3c1a1a; --info-bg: #172a43;
-    --info: #6da7ec;
-    --div-neg: #5598e7; --div-mid: #383835; --div-pos: #e66767;
-    --kill: #d03b3b; --kill-strong: #e25555;
-    --focus: #6da7ec;
-    --shadow: none;
-  }
-}
-:root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #121211;
-  --surface: #1a1a19;
-  --surface-2: #222220;
-  --surface-3: #2b2b29;
-  --border: #2d2d2a;
-  --border-strong: #3c3c38;
-  --text: #f0efec;
-  --text-2: #c3c2b7;
-  --text-3: #949389;
-  --grid: #262624;
-  --axis: #5c5b56;
-  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
-  --b1: #d6d5cc; --b2: #a3a299; --b3: #77766f;
-  --up: #3fbf5f; --down: #f07070;
-  --good-bg: #16301a; --warning-bg: #3a2f12; --serious-bg: #3b2418; --critical-bg: #3c1a1a; --info-bg: #172a43;
-  --info: #6da7ec;
-  --div-neg: #5598e7; --div-mid: #383835; --div-pos: #e66767;
-  --kill: #d03b3b; --kill-strong: #e25555;
-  --focus: #6da7ec;
-  --shadow: none;
+  --bg: #0b1322;
+  --surface: #121c30;
+  --surface-2: #18243b;
+  --surface-3: #213049;
+  --border: #22304a;
+  --border-strong: #33435f;
+  --text: #eef2f9;
+  --text-2: #b6c2d6;
+  --text-3: #8492ab;
+  --grid: #1c2840;
+  --axis: #4a5a77;
+  --ink: #070d19;
+  --ink-2: #111b2e;
+  --s1: #5b80ff; --s2: #f7b334; --s3: #c573f0;
+  --b1: #d3dbe8; --b2: #9aa6b8; --b3: #6b7890;
+  --up: #34c793; --down: #ff6b73;
+  --good-bg: #0f3328; --warning-bg: #3a2c0c; --serious-bg: #3d2215; --critical-bg: #3f171c; --info-bg: #172552;
+  --info: #7d9bff;
+  --div-neg: #5b80ff; --div-mid: #213049; --div-pos: #ff6b73;
+  --kill: #e0444d; --kill-strong: #ff6b73;
+  --focus: #7d9bff;
+}
 }
 
 /* ---------- base ---------- */

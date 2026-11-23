@@ -1,0 +1,198 @@
+/* Identity and motion layer, loaded after styles.css.
+   One bold place (the race on the overview), everything else quiet.
+   Motion: one page-load sequence, charts that draw themselves, numbers that
+   count, and responses to clicks. All of it is off under reduced motion. */
+
+:root { --ease-out: cubic-bezier(.2, .7, .2, 1); }
+
+/* ---------- type ---------- */
+body { font-size: 13.5px; font-feature-settings: "tnum" 1; }
+h1, h2, h3, .page-head h1 { font-family: var(--display); font-weight: 700; letter-spacing: -0.02em; }
+.page-head { margin-bottom: 18px; }
+.page-head h1 { font-size: 34px; line-height: 1.05; font-variation-settings: "opsz" 96; }
+.page-head p { font-size: 13.5px; margin-top: 8px; max-width: 68ch; }
+.panel__title { font-family: var(--display); font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; }
+.panel__sub { font-size: 12.5px; }
+.kpi-hero__v { font-family: var(--display); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+.grid--tiles .kpi-hero__v { font-size: 28px; }
+.gauge__v { font-family: var(--display); font-size: 26px; font-weight: 700; }
+.kpi__v { font-size: 14.5px; }
+.kpi__l, .stat__label { font-size: 11.5px; }
+.ticker { font-weight: 600; font-size: 13px; letter-spacing: 0; }
+.rec__tick .ticker { font-family: var(--display); font-size: 22px; font-weight: 700; }
+.conf__v { font-family: var(--display); font-size: 20px; }
+.num, td.num, .mono { font-size: 12.5px; }
+table.t { font-size: 12.5px; }
+.t th { font-size: 11.5px; font-weight: 500; }
+
+/* ---------- ink navigation slab ---------- */
+.nav { background: var(--ink); border-right: 0; color: var(--on-ink); padding: 18px 12px; }
+.nav__brand { padding: 2px 8px 22px; }
+.nav__logo {
+  width: 34px; height: 34px; border-radius: 10px; font: 800 14px/1 var(--display); letter-spacing: -0.02em;
+  background: conic-gradient(from 210deg, var(--s1), var(--s3), var(--s2), var(--s1)); color: #fff;
+}
+.nav__title { font: 700 16px/1.1 var(--display); color: #fff; letter-spacing: -0.01em; }
+.nav__sub { color: var(--on-ink-2); }
+.nav__links { gap: 3px; }
+.nav__links a { color: var(--on-ink-2); padding: 9px 12px; border-radius: 10px; font-weight: 500; position: relative; }
+.nav__links a:hover { background: var(--ink-2); color: #fff; }
+.nav__links a[aria-current="page"] { background: #fff; color: var(--ink); font-weight: 600; }
+.nav__links a[aria-current="page"] svg { color: var(--s1); }
+.nav__count { background: rgba(255, 255, 255, .1); border-color: transparent; color: #fff; font-family: var(--font); }
+.nav__links a[aria-current="page"] .nav__count { background: var(--surface-3); color: var(--ink); }
+.nav__foot { border-top-color: rgba(255, 255, 255, .1); color: var(--on-ink-2); }
+.nav__foot .field, .nav__foot label, .nav__note { color: var(--on-ink-2); }
+.nav__foot select { background: var(--ink-2); color: var(--on-ink); border-color: rgba(255, 255, 255, .16); }
+
+/* ---------- top bar ---------- */
+.topbar { background: color-mix(in srgb, var(--bg) 85%, transparent); border-bottom-color: transparent; padding: 12px 28px; }
+.stat__value { font-family: var(--display); font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.stat__value small { font-family: var(--font); font-weight: 500; }
+.kill { border-radius: 999px; padding: 6px 16px 6px 8px; background: var(--surface); }
+.kill__text strong { letter-spacing: 0; font-size: 13px; }
+
+/* ---------- surfaces ---------- */
+.content { padding: 18px 28px 40px; }
+.grid { gap: 16px; }
+.panel { border-color: transparent; border-radius: var(--r); }
+.panel__head { padding: 16px 18px 0; }
+.panel__body { padding: 14px 18px 18px; }
+.panel__body--flush { padding: 12px 0 0; }
+.panel__foot { padding: 10px 18px; }
+.kpi-hero { padding: 10px 18px 4px; }
+.kpi { padding: 10px 14px; }
+.kpi-grid { border-radius: 0 0 var(--r) var(--r); overflow: hidden; }
+.t th:first-child, .t td:first-child { padding-left: 18px; }
+.t th:last-child, .t td:last-child { padding-right: 18px; }
+.t th, .t td { padding-top: 9px; padding-bottom: 9px; }
+.levels > div:first-child, .rec__head, .rat, .rec__foot { padding-left: 18px; }
+.swatch { width: 12px; height: 12px; border-radius: 4px; }
+
+/* controls become pills */
+.btn, .seg, input[type="text"], input[type="email"], input[type="search"], input[type="time"], input[type="date"], select { border-radius: 999px; }
+.btn { height: 30px; padding: 0 14px; }
+.btn--primary { background: var(--s1); border-color: var(--s1); color: #fff; }
+.btn--primary:hover { background: color-mix(in srgb, var(--s1) 85%, #000); }
+.seg { padding: 2px; gap: 2px; background: var(--surface-2); border-color: transparent; }
+.seg button { border: 0; border-radius: 999px; height: 26px; padding: 0 11px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(16, 28, 51, .12); }
+.chip { height: 28px; padding: 0 12px 0 10px; border-radius: 999px; }
+.chip[aria-pressed="true"] { border-color: var(--c, var(--border-strong)); background: color-mix(in srgb, var(--c, transparent) 10%, var(--surface)); }
+.badge { border-radius: 999px; padding: 0 9px; }
+.bar-row__track { height: 12px; border-radius: 999px; }
+.bar-row__fill { border-radius: 999px; }
+.minibar, .minibar > i, .conf__bar, .conf__bar i { border-radius: 999px; }
+.conf__bar i { background: var(--s1); }
+.heat__cell { border-radius: 6px; }
+.tooltip { border-radius: 10px; border-color: transparent; background: var(--ink); color: var(--on-ink); box-shadow: 0 10px 30px rgba(16, 28, 51, .3); }
+.tooltip__h, .tooltip__r span:first-child { color: var(--on-ink-2); }
+.toast { background: var(--ink); color: var(--on-ink); border-radius: 12px; }
+.dialog { border-radius: 18px; border-color: transparent; }
+.dialog h2 { font-size: 20px; }
+.chart .series { stroke-width: 2.5; }
+.chart .series--bench { stroke-width: 1.5; }
+.chart .end-label { font-weight: 600; }
+
+/* ---------- the race (overview hero) ---------- */
+.race {
+  background: var(--ink); color: var(--on-ink); border-radius: 20px; padding: 22px 26px 30px;
+  position: relative; overflow: hidden;
+}
+.race::before { /* faint lane lines, like a running track seen from above */
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(255, 255, 255, .04) calc(10% - 1px) 10%);
+}
+.race__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; position: relative; }
+.race__head h2 { font-size: 26px; color: #fff; }
+.race__head p { margin: 4px 0 0; color: var(--on-ink-2); font-size: 12.5px; }
+.race__head .race__verdict { color: #fff; font: 600 15px/1.35 var(--display); max-width: 46ch; text-align: right; margin: 0; }
+.race__lanes { position: relative; display: flex; flex-direction: column; gap: 12px; }
+.lane { display: grid; grid-template-columns: 92px 1fr 72px; align-items: center; gap: 14px; }
+.lane__name { font: 600 13px/1.2 var(--font); color: var(--on-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.race .lane--bench { --c: #b9c5d9; }
+.lane--bench .lane__name { color: var(--on-ink-2); font-weight: 500; }
+.lane__track { position: relative; height: 22px; border-radius: 999px; background: rgba(255, 255, 255, .05); }
+.lane__trail { position: absolute; top: 9px; height: 4px; border-radius: 999px; background: var(--c); opacity: .55; }
+.lane--bench .lane__trail { opacity: .3; }
+.lane__runner {
+  position: absolute; top: 50%; left: var(--x); width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+  background: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 28%, transparent), 0 0 18px color-mix(in srgb, var(--c) 60%, transparent);
+}
+.lane--bench .lane__runner { background: var(--ink); border: 3px solid var(--c); box-shadow: none; width: 14px; height: 14px; margin: -7px 0 0 -7px; }
+.lane__v { font: 700 16px/1 var(--display); text-align: right; }
+.race .lane__v.up { color: #4fe0a8; }
+.race .lane__v.down { color: #ff8a90; }
+.race__start {
+  position: absolute; top: -8px; bottom: -14px; left: calc(92px + 14px + (100% - 92px - 72px - 28px) * var(--z-frac, 0));
+  width: 0; border-left: 1.5px dashed rgba(255, 255, 255, .28); pointer-events: none;
+}
+.race__start span { position: absolute; bottom: -16px; left: -14px; font-size: 10.5px; color: var(--on-ink-2); }
+
+/* ---------- motion ---------- */
+@keyframes ffRise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes ffFade { from { opacity: 0; } }
+@keyframes ffDraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes ffGrowX { from { transform: scaleX(0); } }
+@keyframes ffOpen { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes ffRun { from { left: var(--z); } }
+
+/* one load sequence per page: sections arrive top to bottom */
+.content > * { animation: ffRise .5s var(--ease-out) both; }
+.content > *:nth-child(2) { animation-delay: .05s; }
+.content > *:nth-child(3) { animation-delay: .1s; }
+.content > *:nth-child(4) { animation-delay: .15s; }
+.content > *:nth-child(n+5) { animation-delay: .2s; }
+.panel__body:not([aria-busy]) > * { animation: ffFade .35s ease both; }
+
+/* the race: runners sprint from the start line to where they are now */
+.lane__runner { animation: ffRun 1.3s var(--ease-out) both; animation-delay: calc(.25s + var(--i) * .07s); }
+.lane__trail { animation: ffGrowX 1.3s var(--ease-out) both; animation-delay: calc(.25s + var(--i) * .07s); }
+.lane__v { animation: ffFade .5s ease both; animation-delay: calc(1.1s + var(--i) * .07s); }
+
+/* charts draw themselves the first time they appear */
+.chart .series--draw { stroke-dasharray: 1; stroke-dashoffset: 0; animation: ffDraw 1.2s var(--ease-out) both; }
+.chart .area--draw { animation: ffFade 1s .4s ease both; }
+.spark--draw { stroke-dasharray: 1; animation: ffDraw .9s var(--ease-out) both; }
+.bar-row__fill { transform-origin: left center; animation: ffGrowX .8s var(--ease-out) both; }
+.bar-row:nth-child(2) .bar-row__fill { animation-delay: .04s; }
+.bar-row:nth-child(3) .bar-row__fill { animation-delay: .08s; }
+.bar-row:nth-child(n+4) .bar-row__fill { animation-delay: .12s; }
+.gauge__arc { stroke-dasharray: 1; animation: ffDraw 1s .1s var(--ease-out) both; }
+.heat__cell { animation: ffFade .5s ease both; }
+
+/* responses to clicks */
+.btn, .chip, .seg button, .nav__links a { transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .1s ease, box-shadow .15s ease; }
+.btn:active, .chip:active, .seg button:active { transform: scale(.96); }
+.t tbody tr { transition: background-color .15s ease; }
+.t tbody tr.detail td > * { animation: ffOpen .25s var(--ease-out) both; }
+.tooltip:not([hidden]) { animation: ffFade .12s ease both; }
+.count-up { font-variant-numeric: tabular-nums; }
+
+/* ---------- small screens ---------- */
+@media (max-width: 900px) {
+  .content { padding: 8px 16px 32px; }
+  .topbar { padding: 10px 16px; }
+  .page-head h1 { font-size: 28px; }
+}
+@media (max-width: 640px) {
+  .race { padding: 18px 16px 26px; border-radius: 16px; }
+  .race__head .race__verdict { text-align: left; }
+  .lane { grid-template-columns: 64px 1fr 58px; gap: 8px; }
+  .race__start { left: calc(64px + 8px + (100% - 64px - 58px - 16px) * var(--z-frac, 0)); }
+  .lane__v { font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content > *, .panel__body > *, .chart .series--draw, .chart .area--draw, .spark--draw, .bar-row__fill, .gauge__arc,
+  .heat__cell, .t tbody tr.detail td > *, .tooltip, .lane__runner, .lane__trail, .lane__v { animation: none !important; }
+  .btn, .chip, .seg button, .nav__links a, .t tbody tr { transition: none !important; }
+}
+
+/* strategy composition header: three plain figures, no table lines */
+.sl-kpis { background: none; border-top: 0; margin: 0 0 16px; gap: 12px; border-radius: 0; }
+.sl-kpis .mono { font: 700 18px/1.25 var(--display); letter-spacing: -0.01em; }
+.sl-kpis .mono span { font: 500 12px var(--font); }
+.dir { border-radius: 999px; padding: 4px 8px; letter-spacing: .02em; border: 0; color: #fff; }
+.dir--buy { background: var(--up); color: #fff; }
+.dir--sell { background: var(--down); color: #fff; }

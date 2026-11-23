@@ -54,10 +54,43 @@ FF.pages = (function () {
     });
   }
 
+  // The race: every portfolio and benchmark on one track, placed by its return since the start.
+  function race(el, d) {
+    const runners = d.series.filter((x) => x.values.length).map((x) => ({
+      id: x.id, name: SERIES_STYLE[x.id] ? SERIES_STYLE[x.id].short : x.name, bench: x.kind !== 'portfolio',
+      color: (SERIES_STYLE[x.id] || {}).color || 'var(--text-3)', r: x.values[x.values.length - 1],
+    })).sort((a, b) => b.r - a.r);
+    if (!runners.length) { el.remove(); return; }
+    let lo = Math.min(0, ...runners.map((x) => x.r)), hi = Math.max(0, ...runners.map((x) => x.r));
+    const pad = (hi - lo || 0.01) * 0.06;
+    lo -= pad; hi += pad;
+    const at = (v) => ((v - lo) / (hi - lo)) * 100;
+    const z = at(0);
+    const me = runners.find((x) => !x.bench);
+    const spy = runners.find((x) => x.id === 'spy');
+    const pts = (v) => `${Math.abs(v * 100).toFixed(1)} points`;
+    let verdict = 'The race starts after the first close.';
+    if (me && spy) {
+      const gap = me.r - spy.r;
+      verdict = `${me.name} is ${pts(gap)} ${gap >= 0 ? 'ahead of' : 'behind'} the S&P 500 (SPY).`;
+      const mix = runners.find((x) => x.id === 'bal_60_40');
+      if (mix) verdict += ` ${mix.r > me.r ? `A plain 60/40 mix is ${pts(mix.r - me.r)} ahead of it.` : `It also leads a plain 60/40 mix by ${pts(me.r - mix.r)}.`}`;
+    }
+    el.innerHTML = `<div class="race__head"><div><h2>Who's ahead</h2><p>Return since ${esc(fmt.date(d.dates[0]))}. Solid markers are your portfolios, hollow ones are the market.</p></div><p class="race__verdict">${esc(verdict)}</p></div>
+      <div class="race__lanes" style="--z:${z.toFixed(2)}%;--z-frac:${(z / 100).toFixed(4)}">${runners.map((x, i) => `<div class="lane ${x.bench ? 'lane--bench' : ''}" style="--c:${x.color};--x:${at(x.r).toFixed(2)}%;--i:${i}">
+          <span class="lane__name">${esc(x.name)}</span>
+          <span class="lane__track"><i class="lane__trail" style="left:${Math.min(z, at(x.r)).toFixed(2)}%;width:${Math.abs(at(x.r) - z).toFixed(2)}%;transform-origin:${x.r >= 0 ? 'left' : 'right'} center"></i><b class="lane__runner"></b></span>
+          <span class="lane__v ${tone(x.r)}">${esc(fmt.pctSigned(x.r))}</span></div>`).join('')}
+        <span class="race__start" aria-hidden="true"><span>start</span></span>
+      </div>`;
+  }
+
   // ======================= 1. OVERVIEW =======================
   function overview(root) {
     head(root, 'Overview', 'How your practice portfolios are doing against the market since you started. This is practice money, and past results don\'t promise future ones.');
+    const raceEl = block(root, 'race');
     const curve = block(root);
+    curve.style.marginTop = '14px';
     const grid = block(root, 'grid');
     grid.style.marginTop = '14px';
     const dd = block(grid);
@@ -69,6 +102,7 @@ FF.pages = (function () {
     let view = 'chart';
 
     const load = shared('/api/overview');
+    load().then((d) => race(raceEl, d)).catch(() => raceEl.remove());
 
     panel(curve, {
       title: 'Growth over time',
@@ -323,7 +357,7 @@ FF.pages = (function () {
           const note = sl.holdings.length
             ? `Share of this strategy's money in each holding. ${esc(fmt.pct(sl.invested_pct, 0))} invested; the rest waits in cash earning the T-bill rate.`
             : 'Everything is in cash right now: no holding passes this strategy\'s rules.';
-          body.innerHTML = `<div class="kpi-grid" style="margin-bottom:12px">
+          body.innerHTML = `<div class="kpi-grid sl-kpis">
               <div><div class="kpi__l">Started with</div><div class="mono">${esc(fmt.usd(sl.start_capital))}</div></div>
               <div><div class="kpi__l">Worth now</div><div class="mono">${esc(fmt.usd(sl.equity))} <span class="${tone(sl.return_pct)}">${esc(fmt.pctSigned(sl.return_pct))}</span></div></div>
               <div><div class="kpi__l">Cash</div><div class="mono">${esc(fmt.usd(sl.cash))} <span class="muted">${esc(fmt.pct(1 - sl.invested_pct, 0))}</span></div></div>
