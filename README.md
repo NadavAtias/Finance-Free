@@ -49,7 +49,7 @@ Each run writes a folder under `runs/` containing:
 
 You place real trades yourself, if any, and mark each ticket as taken or skipped on the dashboard. The paper book fills every ticket either way, so it stays a clean record of the system.
 
-`ff serve config/paper.yaml` serves the dashboard in `dashboard/` with live data (opening `dashboard/index.html` directly still shows the mock data). `ff daemon config/paper.yaml` runs the loop after every US close forever, retries if the data is late, backs up the ledger nightly to `state/backups/`, and reports failures as alerts. On the server, `docker compose -f docker/compose.yaml up -d --build` runs both.
+`ff serve config/paper.yaml` serves the dashboard in `dashboard/` with live data (opening `dashboard/index.html` directly still shows the mock data). `ff daemon config/paper.yaml` runs the loop after every US close forever, retries if the data is late, backs up the ledger nightly to `state/backups/`, and reports failures as alerts. On a server, `docker compose -f docker/compose.yaml up -d --build` runs both; [docs/DEPLOY.md](docs/DEPLOY.md) walks through a Hetzner setup with one install script.
 
 The drawdown breaker never resets itself in paper trading. After reviewing, reset it with `ff paper config/paper.yaml --reset-breaker track_a_systematic`.
 
@@ -107,6 +107,7 @@ dashboard/     static UI (vanilla JS); live via `ff serve`
 config/        run configs (YAML)
 tests/         unit and property tests
 docker/        Dockerfile and compose
+deploy/        install.sh (fresh Ubuntu server) and update.sh
 ```
 
 ## Adding a strategy
