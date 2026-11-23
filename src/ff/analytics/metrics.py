@@ -13,6 +13,13 @@ from ff.execution.portfolio import ClosedTrade
 TRADING_DAYS = 252
 
 
+def daily_rf(rf_annual: pd.Series, index: pd.Index) -> pd.Series:
+    """Per-session cash return aligned to ``index``, using the prior known rate."""
+    rate = rf_annual.sort_index().reindex(index, method="ffill").shift(1).fillna(0.0)
+    days = pd.Series(pd.DatetimeIndex(index), index=index).diff().dt.days.fillna(1)
+    return (rate.clip(lower=0) * days / 365.0).astype(float)
+
+
 def drawdown(equity: pd.Series) -> pd.Series:
     return equity / equity.cummax() - 1
 
@@ -32,9 +39,13 @@ def performance(
     gross: pd.Series | None = None,
     trades: Sequence[ClosedTrade] = (),
     benchmark: pd.Series | None = None,
+    rf_annual: pd.Series | None = None,
 ) -> dict[str, float]:
+    """Metrics for one equity curve. With ``rf_annual`` (T-bill yield, decimal),
+    Sharpe and Sortino use returns in excess of cash."""
     eq = equity.dropna()
     rets = eq.pct_change().dropna()
+    excess = rets - daily_rf(rf_annual, rets.index) if rf_annual is not None else rets
     years = (eq.index[-1] - eq.index[0]).days / 365.25
     total = eq.iloc[-1] / eq.iloc[0] - 1
     cagr = (1 + total) ** (1 / years) - 1 if years > 0 and total > -1 else float("nan")
@@ -45,8 +56,8 @@ def performance(
         "total_return": total,
         "cagr": cagr,
         "volatility": vol,
-        "sharpe": rets.mean() / rets.std(ddof=1) * np.sqrt(TRADING_DAYS) if vol > 0 else np.nan,
-        "sortino": rets.mean() * TRADING_DAYS / downside if downside > 0 else np.nan,
+        "sharpe": excess.mean() / excess.std(ddof=1) * np.sqrt(TRADING_DAYS) if vol > 0 else np.nan,
+        "sortino": excess.mean() * TRADING_DAYS / downside if downside > 0 else np.nan,
         "max_drawdown": mdd,
         "max_dd_duration_days": float(max_drawdown_duration(eq)),
         "calmar": cagr / abs(mdd) if mdd < 0 else np.nan,

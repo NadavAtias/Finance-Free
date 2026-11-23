@@ -1,0 +1,66 @@
+# Phase 2: validate the MVP trend strategy before trusting it.
+# Same strategy, universe, costs and risk as mvp_trend.yaml, plus a validation block.
+name: validate_trend
+start: 2007-01-01
+end: null
+initial_capital: 100000
+provider: yahoo
+
+# Locked hold-out: the last ~3 years are excluded until you open them once with
+# `ff validate ... --open-holdout`. Each opening is recorded in runs/trial_registry.jsonl.
+holdout_start: 2023-01-01
+
+universe: [SPY, QQQ, IWM, EFA, EEM, TLT, IEF, VNQ, DBC, GLD]
+
+strategy:
+  id: trend_etf_10
+  kind: trend_etf
+  params:
+    sma_days: 200
+    mom_days: 252
+    vol_days: 60
+    target_vol: 0.10
+    atr_days: 20
+    atr_stop_mult: 3.0
+
+benchmarks:
+  - id: spy_buy_hold
+    kind: buy_and_hold
+    params: {symbols: [SPY]}
+  - id: sixty_forty
+    kind: fixed_mix
+    params: {weights: {SPY: 0.6, IEF: 0.4}}
+
+costs:
+  commission_per_share: 0.0
+  commission_min: 0.0
+  half_spread_bps: 1.0
+  slippage_bps: 2.0
+  max_participation: 0.01
+
+risk:
+  max_risk_per_trade: 0.01
+  max_position_weight: 0.25
+  max_gross_exposure: 1.0
+  daily_loss_limit: 0.02
+  max_drawdown: 0.15
+  kill_switch_file: KILL_SWITCH
+
+settlement_days: 1
+cash_rate_symbol: "^IRX"     # 13-week T-bill yield; set cash_rate_fixed: 0.0 to disable
+
+validation:
+  # 3 x 3 x 3 = 27 settings around the literature defaults. Kept small on purpose:
+  # every setting tried counts against the Deflated Sharpe.
+  grid:
+    sma_days: [150, 200, 250]
+    mom_days: [126, 252, 378]
+    target_vol: [0.08, 0.10, 0.12]
+  train_years: 5
+  test_years: 1
+  pbo_blocks: 16
+  cost_stress: 2.0
+  blend_with: sixty_forty
+  blend_weight: 0.5
+  min_dsr: 0.95
+  max_pbo: 0.5

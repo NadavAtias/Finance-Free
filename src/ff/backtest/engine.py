@@ -44,6 +44,7 @@ class BacktestResult:
     turnover_annual: float
     good_faith_violations: int
     audit: AuditLog
+    interest_earned: float = 0.0
     notes: list[str] = field(default_factory=list)
 
 
@@ -58,7 +59,13 @@ class BacktestEngine:
         audit: AuditLog,
         reference_symbol: str = "SPY",
         min_trade_weight: float = 0.005,
+        cash_rate: pd.Series | None = None,
     ) -> None:
+        """``cash_rate``: annualized yield on idle cash (decimal), indexed by date.
+
+        Interest for the night between sessions t-1 and t uses the rate known at
+        t-1's close, so it carries no look-ahead.
+        """
         self.strategy = strategy
         self.data = data
         self.market = market
@@ -69,6 +76,19 @@ class BacktestEngine:
         self.reference = reference_symbol
         self.min_trade_weight = min_trade_weight
         self._last_px: dict[str, float] = {}
+        self.cash_rate = cash_rate.sort_index() if cash_rate is not None else None
+        self.interest_earned = 0.0
+
+    def _accrue_interest(self, prev: pd.Timestamp, today: pd.Timestamp) -> None:
+        if self.cash_rate is None or self.portfolio.cash <= 0:
+            return
+        known = self.cash_rate.loc[:prev]
+        if known.empty:
+            return
+        rate = max(float(known.iloc[-1]), 0.0)
+        interest = self.portfolio.cash * rate * (today - prev).days / 365.0
+        self.portfolio.cash += interest
+        self.interest_earned += interest
 
     def _prices(self, date: pd.Timestamp) -> dict[str, float]:
         for s in self.data.symbols:
@@ -89,6 +109,8 @@ class BacktestEngine:
         was_halted = False
 
         for i, d in enumerate(sessions):
+            if i > 0:
+                self._accrue_interest(sessions[i - 1], d)
             self.portfolio.settle(i)
             self.broker.process_open(d, i)
             self.broker.process_stops(d, i)
@@ -158,6 +180,7 @@ class BacktestEngine:
             turnover_annual=self.portfolio.traded_notional / avg_eq / years / 2,
             good_faith_violations=self.portfolio.good_faith_violations,
             audit=self.audit,
+            interest_earned=self.interest_earned,
         )
 
     def _rebalance(

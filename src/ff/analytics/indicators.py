@@ -20,7 +20,10 @@ def realized_vol(close: pd.Series, n: int) -> float:
 
 
 def atr(bars: pd.DataFrame, n: int) -> float:
-    h, lo, c = bars["high"], bars["low"], bars["close"]
-    prev = c.shift(1)
-    tr = pd.concat([h - lo, (h - prev).abs(), (lo - prev).abs()], axis=1).max(axis=1)
-    return float(tr.iloc[-n:].mean())
+    """Average true range over the last ``n`` sessions (simple mean)."""
+    tail = bars.iloc[-(n + 1) :]
+    h = tail["high"].to_numpy()[1:]
+    lo = tail["low"].to_numpy()[1:]
+    prev = tail["close"].to_numpy()[:-1]
+    tr = np.maximum(np.maximum(h - lo, np.abs(h - prev)), np.abs(lo - prev))
+    return float(tr.mean())

@@ -17,16 +17,20 @@ class MarketData:
     def __init__(self, bars: dict[str, pd.DataFrame]) -> None:
         self._bars = bars
         self._index = {s: df.index.values for s, df in bars.items()}
+        # Fast per-session lookup used by the broker and mark-to-market.
+        self._rows: dict[str, dict[pd.Timestamp, dict[str, float]]] = {
+            s: dict(zip(df.index, df.to_dict("records"), strict=True))  # type: ignore[arg-type]
+            for s, df in bars.items()
+        }
 
     @property
     def symbols(self) -> list[str]:
         return list(self._bars)
 
-    def bar(self, symbol: str, date: pd.Timestamp) -> pd.Series | None:
-        df = self._bars.get(symbol)
-        if df is None or date not in df.index:
-            return None
-        return df.loc[date]  # type: ignore[return-value]
+    def bar(self, symbol: str, date: pd.Timestamp) -> dict[str, float] | None:
+        """The session's bar as a plain dict (open/high/low/close/volume), or None."""
+        rows = self._rows.get(symbol)
+        return None if rows is None else rows.get(date)
 
     def sessions(self, reference: str) -> pd.DatetimeIndex:
         return pd.DatetimeIndex(self._bars[reference].index)

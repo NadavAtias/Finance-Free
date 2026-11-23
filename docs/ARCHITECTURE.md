@@ -136,7 +136,7 @@ class Broker(Protocol):
 | Redis | Deferred | Only needed for real-time intraday state (Track B) |
 | Scheduler | APScheduler inside the engine service | One process, no extra infra |
 | API | FastAPI | Dashboard backend, health checks |
-| Dashboard | Streamlit for MVP; React later only if Streamlit limits us | Fastest path to useful screens |
+| Dashboard | Static HTML/CSS/JS prototype in `dashboard/` (owner's design), fed by the FastAPI backend in Phase 3 | No build step; `js/api.js` switches from mock data to the live API |
 | Alerts | Telegram bot (free); email optional | Simple, push to phone |
 | ML (later) | scikit-learn, LightGBM | Strong tabular baselines, interpretable feature importance |
 | Deployment | Docker Compose on one VM | Matches "small always-on" |
@@ -347,7 +347,7 @@ Each phase ends with runnable code, tests, and a short report.
 ### Phase 3: Always-on paper trading + dashboard
 - Live daily loop: after-close ingestion, signal generation, risk, recommendations ("trade tickets": symbol, action, size, entry, stop, target, rationale, invalidation), simulated next-open fills.
 - Postgres ledger + append-only audit log of every decision, order and fill.
-- Dashboard: positions, equity curves vs SPY/QQQ, open recommendations, trade journal, risk status, kill switch. **The UI design (screens, layout, Streamlit vs React) is still to be discussed with the owner before this phase starts.**
+- Dashboard: positions, equity curves vs SPY/QQQ, open recommendations, trade journal, risk status, kill switch. The UI design is agreed and lives in `dashboard/`; Phase 3 implements the endpoints listed in `dashboard/README.md`.
 - Telegram alerts. Deploy to the VM with backups and monitoring.
 - **Exit:** system runs unattended for 2 weeks with daily Telegram summaries.
 

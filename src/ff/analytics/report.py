@@ -49,6 +49,21 @@ ORDER = [
 ]
 COLORS = ["#2563eb", "#9ca3af", "#d97706", "#059669", "#7c3aed"]
 
+STYLE = """
+:root{--bg:#fff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--neg:#b91c1c;--card:#f9fafb}
+@media (prefers-color-scheme:dark){:root{--bg:#0b0f17;--fg:#e5e7eb;--muted:#9ca3af;
+--line:#1f2937;--neg:#f87171;--card:#111827} img{filter:invert(.92) hue-rotate(180deg)}}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif;margin:0;
+padding:24px 16px;max-width:1100px;margin-inline:auto}
+h1{font-size:22px;margin:0 0 4px} h2{font-size:16px;margin:28px 0 8px}
+.muted{color:var(--muted)} .warn{background:var(--card);border:1px solid var(--line);
+border-radius:8px;padding:10px 14px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:right;vertical-align:top}
+th:first-child,td:first-child{text-align:left} .neg{color:var(--neg)}
+.wrap{overflow-x:auto} img{max-width:100%} td:last-child{text-align:left}
+"""
+
 
 def _fmt(key: str, v: float | None) -> str:
     if v is None or (isinstance(v, float) and math.isnan(v)):
@@ -134,6 +149,7 @@ def render(
         f"Good-faith violations (cash account): {main.good_faith_violations}",
         f"Commissions paid: ${main.commissions:,.0f}",
         f"Annual turnover: {main.turnover_annual:.0%}",
+        f"Interest earned on idle cash: ${main.interest_earned:,.0f}",
     ]
     meta_rows = "".join(
         f"<tr><th>{html.escape(k)}</th><td>{html.escape(str(v))}</td></tr>" for k, v in meta.items()
@@ -142,20 +158,7 @@ def render(
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Backtest: {html.escape(main.strategy_id)}</title>
-<style>
-:root{{--bg:#fff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--neg:#b91c1c;--card:#f9fafb}}
-@media (prefers-color-scheme:dark){{:root{{--bg:#0b0f17;--fg:#e5e7eb;--muted:#9ca3af;
---line:#1f2937;--neg:#f87171;--card:#111827}} img{{filter:invert(.92) hue-rotate(180deg)}}}}
-body{{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif;margin:0;
-padding:24px 16px;max-width:1100px;margin-inline:auto}}
-h1{{font-size:22px;margin:0 0 4px}} h2{{font-size:16px;margin:28px 0 8px}}
-.muted{{color:var(--muted)}} .warn{{background:var(--card);border:1px solid var(--line);
-border-radius:8px;padding:10px 14px}}
-table{{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}}
-th,td{{border-bottom:1px solid var(--line);padding:5px 8px;text-align:right;vertical-align:top}}
-th:first-child,td:first-child{{text-align:left}} .neg{{color:var(--neg)}}
-.wrap{{overflow-x:auto}} img{{max-width:100%}} td:last-child{{text-align:left}}
-</style></head><body>
+<style>{STYLE}</style></head><body>
 <h1>{html.escape(main.strategy_id)}</h1>
 <div class="muted">{html.escape(str(meta.get("period", "")))} · net of costs ·
 run {html.escape(str(meta.get("run_id", "")))}</div>

@@ -1,0 +1,65 @@
+# Phase 2b: combined Track A book. Equal capital to trend, momentum and risk parity,
+# each with its literature defaults. The grid only varies the mix.
+# Run validate_trend, validate_momentum and validate_risk_parity first: their trials
+# are pooled into this Deflated Sharpe (pooled_kinds), because the mix was chosen
+# after seeing them.
+name: validate_track_a
+start: 2007-01-01
+end: null
+initial_capital: 100000
+provider: yahoo
+holdout_start: 2023-01-01   # same locked hold-out as the trend validation
+
+universe: [SPY, QQQ, IWM, EFA, EEM, TLT, IEF, VNQ, DBC, GLD]
+
+strategy:
+  id: track_a_ensemble
+  kind: ensemble
+  params:
+    members:
+      - kind: trend_etf
+        params: {sma_days: 200, mom_days: 252, vol_days: 60, target_vol: 0.10, atr_days: 20, atr_stop_mult: 3.0}
+      - kind: xs_momentum
+        params: {lookback_days: 252, skip_days: 21, top_n: 3, vol_days: 60, target_vol: 0.10, atr_days: 20, atr_stop_mult: 3.0}
+      - kind: risk_parity
+        params: {vol_days: 60, target_vol: 0.08, atr_days: 20, atr_stop_mult: 4.0}
+    weights: [1, 1, 1]
+
+benchmarks:
+  - id: spy_buy_hold
+    kind: buy_and_hold
+    params: {symbols: [SPY]}
+  - id: sixty_forty
+    kind: fixed_mix
+    params: {weights: {SPY: 0.6, IEF: 0.4}}
+
+costs:
+  commission_per_share: 0.0
+  commission_min: 0.0
+  half_spread_bps: 1.0
+  slippage_bps: 2.0
+  max_participation: 0.01
+
+risk:
+  max_risk_per_trade: 0.01
+  max_position_weight: 0.25
+  max_gross_exposure: 1.0
+  daily_loss_limit: 0.02
+  max_drawdown: 0.15
+  kill_switch_file: KILL_SWITCH
+
+settlement_days: 1
+cash_rate_symbol: "^IRX"     # 13-week T-bill yield; set cash_rate_fixed: 0.0 to disable
+
+validation:
+  grid:
+    weights: [[1, 1, 1], [2, 1, 1], [1, 2, 1], [1, 1, 2]]
+  pooled_kinds: [trend_etf, xs_momentum, risk_parity]
+  train_years: 5
+  test_years: 1
+  pbo_blocks: 16
+  cost_stress: 2.0
+  blend_with: sixty_forty
+  blend_weight: 0.5
+  min_dsr: 0.95
+  max_pbo: 0.5
