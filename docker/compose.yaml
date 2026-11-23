@@ -18,6 +18,10 @@ x-app: &app
     - ../runs:/app/runs
     - ../state:/app/state
   restart: unless-stopped
+  init: true
+  logging:            # keep weeks of unattended logs from filling the disk
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
 
 services:
   paper:
@@ -28,3 +32,8 @@ services:
     command: ["serve", "config/paper.yaml", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3

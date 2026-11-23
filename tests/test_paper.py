@@ -231,3 +231,26 @@ def test_holdings_explain_themselves(client: TestClient) -> None:
     assert client.get("/api/summary").json()["status"]["last_session"] == "2020-04-30"
     trades = client.get("/api/trades").json()
     assert all(t["sleeve"] and t["closed"] for t in trades)
+
+
+def test_daemon_reports_failures_and_missed_days(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import sqlite3
+
+    from ff.paper import daemon
+
+    c = _cfg(tmp_path)
+    sent: list[str] = []
+    monkeypatch.setattr(daemon.telegram, "send", lambda text: sent.append(text) or True)
+
+    def boom(cfg: PaperConfig) -> None:
+        raise RuntimeError("data source down")
+
+    monkeypatch.setattr(daemon, "run_paper", boom)
+    assert daemon.run_once(c) is False  # an error is reported, not raised
+    daemon.give_up(c)
+    with sqlite3.connect(c.db_path) as con:
+        titles = [r[0] for r in con.execute("SELECT title FROM alerts ORDER BY id")]
+    assert titles == ["Daily run failed", "Daily run skipped"]
+    assert len(sent) == 2 and "data source down" in sent[0]

@@ -68,3 +68,19 @@ def serve_forever(cfg: PaperConfig) -> None:
             if attempt < RETRIES:
                 log.info("session bar not available yet; retrying in %d min", RETRY_MINUTES)
                 _time.sleep(RETRY_MINUTES * 60)
+        else:
+            give_up(cfg)
+
+
+def give_up(cfg: PaperConfig) -> None:
+    """Every retry missed today's bar: say so instead of failing silently."""
+    now = pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
+    msg = (
+        f"No price data for {last_final_session().date()} after {RETRIES + 1} tries. "
+        "Nothing traded today; the next run catches up automatically."
+    )
+    log.warning(msg)
+    db = PaperDB(cfg.db_path)
+    db.alert(now, "warning", "Daily run skipped", msg)
+    db.event(now, "system", msg)
+    telegram.send(f"Finance Free: {msg}")
