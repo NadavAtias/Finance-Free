@@ -48,6 +48,19 @@ class BacktestResult:
     notes: list[str] = field(default_factory=list)
 
 
+@dataclass
+class StepOutput:
+    """What one session produced: marks, and (on rebalance days) the approved
+    target book plus the next-open orders it created."""
+
+    date: pd.Timestamp
+    equity: float
+    gross_exposure: float
+    approved: list[Intent] | None = None
+    orders: list[Order] = field(default_factory=list)
+    kill_switch: bool = False
+
+
 class BacktestEngine:
     def __init__(
         self,
@@ -78,6 +91,7 @@ class BacktestEngine:
         self._last_px: dict[str, float] = {}
         self.cash_rate = cash_rate.sort_index() if cash_rate is not None else None
         self.interest_earned = 0.0
+        self._was_halted = False
 
     def _accrue_interest(self, prev: pd.Timestamp, today: pd.Timestamp) -> None:
         if self.cash_rate is None or self.portfolio.cash <= 0:
@@ -97,6 +111,74 @@ class BacktestEngine:
                 self._last_px[s] = float(bar["close"])
         return dict(self._last_px)
 
+    def step(
+        self,
+        d: pd.Timestamp,
+        i: int,
+        prev: pd.Timestamp | None,
+        is_month_end: bool,
+        is_first_session: bool,
+    ) -> StepOutput:
+        """Process one session ``d`` (session index ``i``). Used by ``run`` and by
+        the paper-trading loop, which calls it once per new session."""
+        if prev is not None:
+            self._accrue_interest(prev, d)
+        self.portfolio.settle(i)
+        self.broker.process_open(d, i)
+        self.broker.process_stops(d, i)
+
+        px = self._prices(d)
+        eq = self.portfolio.equity(px)
+        weights = self.portfolio.weights(px)
+        out = StepOutput(d, eq, sum(weights.values()))
+        self.risk.on_close(d, i, eq)
+
+        if self.risk.kill_switch_active():
+            self.broker.cancel_all()
+            self.audit.write("kill_switch", d, action="all orders cancelled, no decisions")
+            out.kill_switch = True
+            return out
+
+        ctx = Context(
+            date=d,
+            data=self.data.view(d),
+            equity=eq,
+            weights=weights,
+            is_month_end=is_month_end,
+            is_first_session=is_first_session,
+        )
+        intents = self.strategy.on_bar(ctx)
+
+        halted = self.risk.state.halted
+        if halted and not self._was_halted:
+            # Breaker just tripped: flatten everything at next open.
+            intents = [
+                Intent(s, 0.0, 1.0, None, Rationale("Drawdown breaker: flatten")) for s in weights
+            ]
+        self._was_halted = halted
+        if intents is None:
+            return out
+
+        approved = self.risk.apply(d, intents, weights, px)
+        for it in approved:
+            self.audit.write(
+                "decision",
+                d,
+                strategy=self.strategy.id,
+                symbol=it.symbol,
+                target_weight=round(it.target_weight, 5),
+                stop=it.stop_price,
+                rationale=it.rationale.as_text(),
+            )
+        self._rebalance(d, approved, weights, px, eq)
+        out.approved = approved
+        out.orders = [
+            o
+            for o in self.broker.open_orders()
+            if o.type is OrderType.MARKET_ON_OPEN and o.created == d
+        ]
+        return out
+
     def run(self, start: pd.Timestamp, end: pd.Timestamp) -> BacktestResult:
         sessions = self.data.sessions(self.reference)
         sessions = sessions[(sessions >= start) & (sessions <= end)]
@@ -106,63 +188,20 @@ class BacktestEngine:
         gross_pts: dict[pd.Timestamp, float] = {}
         recs: list[Intent] = []
         rec_date: pd.Timestamp | None = None
-        was_halted = False
 
         for i, d in enumerate(sessions):
-            if i > 0:
-                self._accrue_interest(sessions[i - 1], d)
-            self.portfolio.settle(i)
-            self.broker.process_open(d, i)
-            self.broker.process_stops(d, i)
-
-            px = self._prices(d)
-            eq = self.portfolio.equity(px)
-            weights = self.portfolio.weights(px)
-            equity_pts[d] = eq
-            gross_pts[d] = sum(weights.values())
-            self.risk.on_close(d, i, eq)
-
-            if self.risk.kill_switch_active():
-                self.broker.cancel_all()
-                self.audit.write("kill_switch", d, action="all orders cancelled, no decisions")
-                continue
-
             is_last = i == len(sessions) - 1
-            is_month_end = not is_last and sessions[i + 1].month != d.month
-            ctx = Context(
-                date=d,
-                data=self.data.view(d),
-                equity=eq,
-                weights=weights,
-                is_month_end=is_month_end,
+            out = self.step(
+                d,
+                i,
+                sessions[i - 1] if i > 0 else None,
+                is_month_end=not is_last and sessions[i + 1].month != d.month,
                 is_first_session=i == 0,
             )
-            intents = self.strategy.on_bar(ctx)
-
-            halted = self.risk.state.halted
-            if halted and not was_halted:
-                # Breaker just tripped: flatten everything at next open.
-                intents = [
-                    Intent(s, 0.0, 1.0, None, Rationale("Drawdown breaker: flatten"))
-                    for s in weights
-                ]
-            was_halted = halted
-            if intents is None:
-                continue
-
-            approved = self.risk.apply(d, intents, weights, px)
-            for it in approved:
-                self.audit.write(
-                    "decision",
-                    d,
-                    strategy=self.strategy.id,
-                    symbol=it.symbol,
-                    target_weight=round(it.target_weight, 5),
-                    stop=it.stop_price,
-                    rationale=it.rationale.as_text(),
-                )
-            self._rebalance(d, approved, weights, px, eq)
-            recs, rec_date = approved, d
+            equity_pts[d] = out.equity
+            gross_pts[d] = out.gross_exposure
+            if out.approved is not None:
+                recs, rec_date = out.approved, d
 
         last = sessions[-1]
         years = max((last - sessions[0]).days / 365.25, 1e-9)

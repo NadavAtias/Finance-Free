@@ -276,12 +276,12 @@ Risk rules get the most thorough tests in the codebase, including property-based
 
 ### What runs
 
-One VM running Docker Compose with four containers:
+One VM running Docker Compose (`docker/compose.yaml`) with two containers that share a `state/` folder:
 
-1. `engine`: scheduler, data ingestion, strategies, risk, sim broker
-2. `postgres`: operational state and audit log
-3. `dashboard`: Streamlit + FastAPI
-4. `caddy`: HTTPS reverse proxy (or skip it and use Tailscale only)
+1. `paper`: scheduler, data ingestion, strategies, risk, sim broker (`ff daemon`)
+2. `web`: FastAPI backend serving the static dashboard (`ff serve`), bound to localhost; reach it over Tailscale
+
+State is one SQLite file (`state/paper.sqlite`) with nightly backups, instead of the Postgres container first planned: there is one writer and one user, and backups are a file copy. Moving to Postgres later only means swapping the small `PaperDB` layer.
 
 ### Sizing
 
@@ -346,7 +346,7 @@ Each phase ends with runnable code, tests, and a short report.
 
 ### Phase 3: Always-on paper trading + dashboard
 - Live daily loop: after-close ingestion, signal generation, risk, recommendations ("trade tickets": symbol, action, size, entry, stop, target, rationale, invalidation), simulated next-open fills.
-- Postgres ledger + append-only audit log of every decision, order and fill.
+- SQLite ledger (Postgres was the first plan; see section 8) + append-only journal of every decision, risk verdict, order and fill.
 - Dashboard: positions, equity curves vs SPY/QQQ, open recommendations, trade journal, risk status, kill switch. The UI design is agreed and lives in `dashboard/`; Phase 3 implements the endpoints listed in `dashboard/README.md`.
 - Telegram alerts. Deploy to the VM with backups and monitoring.
 - **Exit:** system runs unattended for 2 weeks with daily Telegram summaries.

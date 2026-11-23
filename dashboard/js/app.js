@@ -49,7 +49,7 @@
     try {
       const r = await api.post('/api/kill-switch', { engaged: engage });
       setKill(r.engaged);
-      FF_MOCK._journalAppend({ ts: new Date().toISOString(), type: 'system', ticker: '—', strategy: '—', detail: `You turned the kill switch ${r.engaged ? 'on. Trading stopped' : 'off. Trading is back on'}` });
+      if (api.mode !== 'live') FF_MOCK._journalAppend({ ts: new Date().toISOString(), type: 'system', ticker: '—', strategy: '—', detail: `You turned the kill switch ${r.engaged ? 'on. Trading stopped' : 'off. Trading is back on'}` });
       toast(r.engaged ? 'Trading is stopped.' : 'Trading is back on.');
     } catch (err) {
       toast('The kill switch didn\'t respond. As a backup, create a file named KILL_SWITCH on the server.');

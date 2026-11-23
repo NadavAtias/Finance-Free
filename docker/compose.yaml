@@ -1,13 +1,30 @@
-# Phase 1: one-shot backtest container. Phase 3 adds the always-on engine,
-# Postgres and the dashboard to this file.
+# Phase 3: always-on paper trading on one small VM.
+#   paper: runs the daily loop after every US close (and catches up on start)
+#   web:   dashboard + API on port 8000, bound to localhost only. Reach it over
+#          Tailscale or an SSH tunnel; it has no login, so never expose it publicly.
+# State (SQLite ledger, nightly backups, KILL_SWITCH) lives in ../state.
+#
+#   docker compose -f docker/compose.yaml up -d --build
+#   docker compose -f docker/compose.yaml run --rm paper backtest config/mvp_trend.yaml
+x-app: &app
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+  env_file:
+    - path: ../.env
+      required: false
+  volumes:
+    - ../data:/app/data
+    - ../runs:/app/runs
+    - ../state:/app/state
+  restart: unless-stopped
+
 services:
-  engine:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    env_file:
-      - path: ../.env
-        required: false
-    volumes:
-      - ../data:/app/data
-      - ../runs:/app/runs
+  paper:
+    <<: *app
+    command: ["daemon", "config/paper.yaml"]
+  web:
+    <<: *app
+    command: ["serve", "config/paper.yaml", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"

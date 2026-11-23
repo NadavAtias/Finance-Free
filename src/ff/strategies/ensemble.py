@@ -14,6 +14,13 @@ from typing import Any
 from ff.core.types import Intent, Rationale, SignalContribution
 from ff.strategies.base import Context, Strategy, build_strategy, register
 
+_LABEL = {
+    "trend_etf": "Trend",
+    "risk_parity": "Risk parity",
+    "xs_momentum": "Momentum",
+    "fixed_mix": "Fixed mix",
+}
+
 
 @register("ensemble")
 class Ensemble(Strategy):
@@ -64,7 +71,8 @@ class Ensemble(Strategy):
                     stop[it.symbol] = min(stop.get(it.symbol, it.stop_price), it.stop_price)
                 if it.target_weight > 0:
                     parts.setdefault(it.symbol, []).append(
-                        f"{s.id} {w:.0%}x{it.target_weight:.1%}: {it.rationale.summary}"
+                        f"{_LABEL.get(s.kind, s.kind)} ({w:.0%} of book, wants "
+                        f"{it.target_weight:.1%}): {it.rationale.summary}"
                     )
                     sigs.setdefault(it.symbol, []).extend(it.rationale.signals)
         out: list[Intent] = []
@@ -77,8 +85,7 @@ class Ensemble(Strategy):
                         0.6,
                         stop.get(sym),
                         Rationale(
-                            summary=f"Long {sym} {w:.1%} from {len(parts[sym])} member(s): "
-                            + " | ".join(parts[sym]),
+                            summary=f"Long {sym}, {w:.1%} of the book. " + ". ".join(parts[sym]),
                             signals=tuple(sigs[sym]),
                             risk=f"combined stop {stop[sym]:.2f} (widest member stop)"
                             if sym in stop

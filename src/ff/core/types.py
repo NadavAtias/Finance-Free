@@ -87,6 +87,13 @@ def next_order_id() -> int:
     return next(_order_ids)
 
 
+def reserve_order_ids(above: int) -> None:
+    """Make new order ids start after ``above`` (paper state restored from disk)."""
+    global _order_ids
+    peek = next(_order_ids)
+    _order_ids = itertools.count(max(peek, above + 1))
+
+
 @dataclass
 class Order:
     symbol: Symbol
