@@ -5,6 +5,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 RUN uv sync --frozen --no-dev
 COPY config ./config
-ENV PATH="/app/.venv/bin:$PATH"
+COPY dashboard ./dashboard
+ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 ENTRYPOINT ["ff"]
 CMD ["backtest", "config/mvp_trend.yaml"]

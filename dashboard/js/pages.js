@@ -18,6 +18,9 @@ FF.pages = (function () {
   const STRATEGY_NAME = {
     trend_200_50: 'Trend following', vol_target: 'Steady risk', dual_momentum: 'Momentum', conviction_ensemble: 'Conviction picks',
     orb_5m: 'Morning breakout', vwap_reversion: 'Bounce back', pead: 'After-earnings drift', gap_fade: 'Gap fade',
+    // live backend ids
+    track_a_systematic: 'Trend + risk parity', core_60_40: '60/40 core', trend_etf: 'Trend following',
+    risk_parity: 'Risk parity', xs_momentum: 'Momentum rotation',
   };
   const pname = (id) => PORTFOLIO_NAME[id] || id;
   const sname = (id) => STRATEGY_NAME[id] || id;
@@ -245,7 +248,7 @@ FF.pages = (function () {
         $$('button', card).forEach((x) => { x.disabled = true; });
         try {
           await api.post(`/api/recommendations/${encodeURIComponent(id)}/${act}`);
-          FF_MOCK._journalAppend({ ts: new Date().toISOString(), type: 'manual', ticker: rec.ticker, strategy: rec.strategy, detail: `You ${act === 'taken' ? 'marked this as taken' : 'skipped this'}: ${rec.direction === 'BUY' ? 'buy' : 'sell'} ${rec.shares} at ${rec.entry.toFixed(2)}` });
+          if (api.mode !== 'live') FF_MOCK._journalAppend({ ts: new Date().toISOString(), type: 'manual', ticker: rec.ticker, strategy: rec.strategy, detail: `You ${act === 'taken' ? 'marked this as taken' : 'skipped this'}: ${rec.direction === 'BUY' ? 'buy' : 'sell'} ${rec.shares} at ${rec.entry.toFixed(2)}` });
           card.classList.add('leaving');
           setTimeout(() => {
             ctx.data = all.filter((x) => x.id !== id);
@@ -263,8 +266,8 @@ FF.pages = (function () {
 
   function recCard(r, halted) {
     const buy = r.direction === 'BUY';
-    const stopPct = (r.stop - r.entry) / r.entry;
-    const tpPct = (r.take_profit - r.entry) / r.entry;
+    const stopPct = r.stop == null ? null : (r.stop - r.entry) / r.entry;
+    const tpPct = r.take_profit == null ? null : (r.take_profit - r.entry) / r.entry;
     const confLabel = r.confidence >= 70 ? 'Fairly sure' : r.confidence >= 50 ? 'Somewhat sure' : 'Not very sure';
     return `<article class="panel rec" data-id="${esc(r.id)}">
       <div class="rec__head">
@@ -290,7 +293,7 @@ FF.pages = (function () {
         <div><span class="k">Drop it if</span><span>${esc(r.invalidation)}</span></div>
       </div>
       <div class="rec__foot">
-        <span class="muted" title="What you lose if the stop-loss is hit, and how much bigger the possible gain is">Could lose ${esc(fmt.usd(r.risk_usd))} (${esc(fmt.pct(r.risk_pct_equity, 2))}) · could gain ${esc(r.reward_risk.toFixed(1))}×</span>
+        <span class="muted" title="What you lose if the stop-loss is hit, and how much bigger the possible gain is">Could lose ${esc(fmt.usd(r.risk_usd))} (${esc(fmt.pct(r.risk_pct_equity, 2))})${r.reward_risk == null ? '' : ` · could gain ${esc(r.reward_risk.toFixed(1))}×`}</span>
         <span class="btns">
           <button class="btn" data-act="skip" ${halted ? 'disabled title="Trading is stopped"' : ''}>Skip</button>
           <button class="btn btn--primary" data-act="taken" ${halted ? 'disabled title="Trading is stopped"' : ''}>Mark as taken</button>
@@ -406,13 +409,13 @@ FF.pages = (function () {
               <th class="num bl" title="Live Sharpe minus tested Sharpe. Below −0.5 is a warning.">Live vs tested</th></tr>
           </thead>
           <tbody>${rows.map((s, i) => {
-            const gap = s.live ? s.live.sharpe - s.backtest.sharpe : null;
+            const gap = s.live && s.live.sharpe != null && s.backtest.sharpe != null ? s.live.sharpe - s.backtest.sharpe : null;
             return `<tr>
               <td class="muted mono">${i + 1}</td>
               <td style="white-space:normal;min-width:190px;max-width:260px"><div style="font-weight:600">${esc(s.name)}</div><div class="tname" title="${esc(s.id)}">${esc(s.desc || s.id)}${s.live_trades ? ' · ' + s.live_trades + ' trades' : ''}</div></td>
               <td title="${s.since ? 'Live since ' + esc(fmt.date(s.since)) : 'Not live yet'}">${esc(pname(s.portfolio))}</td>
               <td>${badge(s.status)}</td>
-              <td class="mono">${esc(fmt.pct(s.allocation, 0))}<span class="minibar"><i style="width:${s.allocation / 0.4 * 100}%"></i></span></td>
+              <td class="mono">${esc(fmt.pct(s.allocation, 0))}<span class="minibar"><i style="width:${Math.min(100, s.allocation / 0.4 * 100)}%"></i></span></td>
               <td class="num bl ${tone(s.backtest.cagr)}">${esc(fmt.pctSigned(s.backtest.cagr))}</td>
               <td class="num">${esc(fmt.num(s.backtest.sharpe))}</td>
               <td class="num">${esc(fmt.pct(s.backtest.max_dd))}</td>
@@ -453,9 +456,10 @@ FF.pages = (function () {
       render(body, d, ctx) {
         ctx.actions.innerHTML = seg('by', [['ticker', 'Stock'], ['sector', 'Industry'], ['strategy', 'Strategy']], by);
         const draw = () => {
-          const opts = by === 'sector' ? { limit: d.limits.sector, scaleMax: 0.4 } : { scaleMax: by === 'strategy' ? 0.4 : 0.15 };
+          const top = Math.max(0, ...d.exposure[by].map((r) => r.pct)) * 1.1; // keep live bars inside the track
+          const opts = by === 'sector' ? { limit: d.limits.sector, scaleMax: Math.max(0.4, top) } : { scaleMax: Math.max(by === 'strategy' ? 0.4 : 0.15, top) };
           charts.bars(body, d.exposure[by], Object.assign(opts, { label: (r) => (by === 'strategy' ? sname(r.key) : r.key) }));
-          if (by === 'sector') body.insertAdjacentHTML('beforeend', `<p class="hint" style="margin-top:12px">No more than ${fmt.pct(d.limits.sector, 0)} in any one industry. Funds count toward the industry they hold.</p>`);
+          if (by === 'sector' && d.limits.sector != null) body.insertAdjacentHTML('beforeend', `<p class="hint" style="margin-top:12px">No more than ${fmt.pct(d.limits.sector, 0)} in any one industry. Funds count toward the industry they hold.</p>`);
         };
         onSeg(ctx.actions, 'by', (v) => { by = v; draw(); });
         draw();

@@ -1,0 +1,66 @@
+# Phase 3: always-on paper trading. `ff paper run config/paper.yaml` processes every
+# new session since the last run (safe to run any number of times a day).
+#
+# Track A holds the book validated in Phase 2: half in the systematic sleeve
+# (trend + risk parity, equal weight, literature defaults, no tuning) and half in a
+# monthly-rebalanced 60/40 core. Momentum rotation stays research-only: it failed
+# both overfitting checks.
+name: paper
+start: 2026-11-23            # first paper session; earlier data is warm-up only
+provider: yahoo
+state_dir: state             # SQLite ledger, engine snapshots, KILL_SWITCH
+data_dir: data
+
+portfolios:
+  - id: track_a
+    name: Track A · long-term
+    sleeves:
+      - id: track_a_systematic
+        capital: 50000
+        strategy:
+          kind: ensemble
+          params:
+            members:
+              - kind: trend_etf
+                params: {sma_days: 200, mom_days: 252, vol_days: 60, target_vol: 0.10, atr_days: 20, atr_stop_mult: 3.0}
+              - kind: risk_parity
+                params: {vol_days: 60, target_vol: 0.08, atr_days: 20, atr_stop_mult: 4.0}
+            weights: [1, 1]
+        universe: [SPY, QQQ, IWM, EFA, EEM, TLT, IEF, VNQ, DBC, GLD]
+      - id: core_60_40
+        capital: 50000
+        benchmark_rules: true      # fixed weights: no stops, only the portfolio-level gates
+        strategy:
+          kind: fixed_mix
+          params: {weights: {SPY: 0.6, IEF: 0.4}}
+
+# Shown on the dashboard so its layout stays complete; they hold no money until
+# their phase starts.
+placeholders:
+  - {id: track_b, name: "Track B · intraday (Phase 5)"}
+  - {id: conviction, name: "System Conviction (Phase 4)"}
+
+# Research strategies listed on the leaderboard with their validation results.
+research:
+  - {id: xs_momentum, kind: xs_momentum, name: Momentum rotation}
+
+benchmarks:
+  - {id: spy, name: SPY, weights: {SPY: 1.0}}
+  - {id: qqq, name: QQQ, weights: {QQQ: 1.0}}
+  - {id: bal_60_40, name: 60/40, weights: {SPY: 0.6, IEF: 0.4}}
+
+costs:
+  half_spread_bps: 1.0
+  slippage_bps: 2.0
+  max_participation: 0.01
+
+risk:
+  max_risk_per_trade: 0.01
+  max_position_weight: 0.25
+  max_gross_exposure: 1.0
+  daily_loss_limit: 0.02
+  max_drawdown: 0.15
+  kill_switch_file: KILL_SWITCH   # relative to state_dir
+
+settlement_days: 1
+cash_rate_symbol: "^IRX"

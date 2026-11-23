@@ -1,4 +1,4 @@
-.PHONY: setup test lint backtest validate validate-a demo
+.PHONY: setup test lint backtest validate validate-a demo paper serve
 setup:
 	uv sync
 test:
@@ -17,3 +17,7 @@ validate-a: # each Track A strategy, then the combined book (pools their trials)
 	uv run ff validate config/validate_track_a.yaml
 demo:
 	uv run ff backtest config/mvp_trend.yaml --provider synthetic
+paper:
+	uv run ff paper config/paper.yaml
+serve:
+	uv run ff serve config/paper.yaml

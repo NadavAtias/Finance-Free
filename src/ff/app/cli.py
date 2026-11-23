@@ -1,4 +1,6 @@
-"""Command line entry point: ``ff backtest`` and ``ff fetch``."""
+"""Command line entry point: ``ff backtest``, ``ff validate``, ``ff fetch``,
+``ff paper`` (one paper-trading pass), ``ff daemon`` (always-on scheduler) and
+``ff serve`` (dashboard + API)."""
 
 from __future__ import annotations
 
@@ -51,7 +53,22 @@ def main(argv: list[str] | None = None) -> int:
     f = sub.add_parser("fetch", help="download and cache bars for a config's symbols")
     f.add_argument("config", type=Path)
     f.add_argument("--provider")
+    pp = sub.add_parser("paper", help="process new sessions in the paper-trading ledger")
+    pp.add_argument("config", type=Path)
+    pp.add_argument("--no-refresh", action="store_true", help="use cached data only")
+    pp.add_argument("--no-notify", action="store_true", help="don't send Telegram")
+    pp.add_argument("--reset-breaker", metavar="SLEEVE", help="reset a tripped drawdown breaker")
+    dm = sub.add_parser("daemon", help="run the paper loop after every US close, forever")
+    dm.add_argument("config", type=Path)
+    sv = sub.add_parser("serve", help="serve the dashboard and its API")
+    sv.add_argument("config", type=Path)
+    sv.add_argument("--host", default="127.0.0.1")
+    sv.add_argument("--port", type=int, default=8000)
+    sv.add_argument("--dashboard", type=Path, default=Path("dashboard"))
     args = p.parse_args(argv)
+
+    if args.cmd in ("paper", "daemon", "serve"):
+        return _paper_commands(args)
 
     cfg = load_config(args.config)
     if args.provider:
@@ -90,6 +107,36 @@ def main(argv: list[str] | None = None) -> int:
             f"Sharpe {m['sharpe']:5.2f}  maxDD {m['max_drawdown']:6.1%}"
         )
     print(f"Report: {out / 'report.html'}")
+    return 0
+
+
+def _paper_commands(args: argparse.Namespace) -> int:
+    from ff.paper.config import load_paper_config
+
+    pcfg = load_paper_config(args.config)
+    if args.cmd == "serve":
+        import uvicorn
+
+        from ff.api.app import create_app
+
+        uvicorn.run(create_app(pcfg, args.dashboard), host=args.host, port=args.port)
+        return 0
+    if args.cmd == "daemon":
+        from ff.paper.daemon import serve_forever
+
+        serve_forever(pcfg)
+        return 0
+    from ff.paper.loop import reset_breaker, run_paper
+
+    if args.reset_breaker:
+        print(reset_breaker(pcfg, args.reset_breaker))
+        return 0
+    res = run_paper(pcfg, refresh=not args.no_refresh, notify=not args.no_notify)
+    print(f"Processed {res.new_sessions} new session(s); last recorded: {res.last_session}")
+    if res.summary:
+        print(res.summary)
+    if res.telegram:
+        print(f"Telegram: {res.telegram}")
     return 0
 
 

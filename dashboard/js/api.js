@@ -9,7 +9,9 @@
 window.FF = window.FF || {};
 FF.api = (function () {
   'use strict';
-  const MODE = 'mock'; // switch to 'live' once the FastAPI app serves /api/*
+  // 'live' when served by `ff serve` (it sets window.FF_MODE); 'mock' when the files
+  // are opened directly or served by a plain static server.
+  const MODE = window.FF_MODE || 'mock';
   const BASE = '';     // e.g. 'http://localhost:8000' when served separately
 
   let demo = 'normal';
